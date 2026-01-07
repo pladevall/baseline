@@ -4,18 +4,38 @@ import { useState, useEffect, useCallback } from 'react';
 import FileUpload from '@/components/FileUpload';
 import DataTable from '@/components/DataTable';
 import { BIAEntry } from '@/lib/types';
-import { getEntries, saveEntry, deleteEntry } from '@/lib/storage';
 import { parsePDFFile } from '@/lib/client-pdf-parser';
 import ThemeToggle from '@/components/ThemeToggle';
+import { getEntriesFromDb, saveEntryToDb, deleteEntryFromDb, migrateFromLocalStorage } from '@/lib/supabase';
 
 export default function Home() {
   const [entries, setEntries] = useState<BIAEntry[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [progress, setProgress] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
+  const [isInitializing, setIsInitializing] = useState(true);
 
   useEffect(() => {
-    setEntries(getEntries());
+    const init = async () => {
+      try {
+        // First, try to migrate any localStorage data to cloud
+        const migrated = await migrateFromLocalStorage();
+        if (migrated > 0) {
+          console.log(`Migrated ${migrated} entries from localStorage`);
+        }
+
+        // Then fetch from cloud
+        const cloudEntries = await getEntriesFromDb();
+        setEntries(cloudEntries);
+      } catch (err) {
+        console.error('Failed to load entries:', err);
+        setError('Failed to load data. Please check your connection.');
+      } finally {
+        setIsInitializing(false);
+      }
+    };
+
+    init();
   }, []);
 
   const handleUpload = useCallback(async (file: File) => {
@@ -33,8 +53,12 @@ export default function Home() {
         return;
       }
 
-      saveEntry(entry);
-      setEntries(getEntries());
+      setProgress('Saving to cloud...');
+      await saveEntryToDb(entry);
+
+      // Refresh entries from cloud
+      const cloudEntries = await getEntriesFromDb();
+      setEntries(cloudEntries);
       setProgress('');
     } catch (err) {
       console.error('Parsing error:', err);
@@ -44,12 +68,32 @@ export default function Home() {
     }
   }, []);
 
-  const handleDelete = useCallback((id: string) => {
+  const handleDelete = useCallback(async (id: string) => {
     if (confirm('Delete this entry?')) {
-      deleteEntry(id);
-      setEntries(getEntries());
+      try {
+        await deleteEntryFromDb(id);
+        const cloudEntries = await getEntriesFromDb();
+        setEntries(cloudEntries);
+      } catch (err) {
+        console.error('Delete error:', err);
+        setError('Failed to delete entry');
+      }
     }
   }, []);
+
+  if (isInitializing) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <svg className="w-6 h-6 text-gray-400 animate-spin" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+          </svg>
+          <p className="text-sm text-gray-500 dark:text-gray-400">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 transition-colors">

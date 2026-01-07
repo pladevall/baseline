@@ -1,6 +1,7 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { ServiceWorkerRegistration } from "@/components/ServiceWorkerRegistration";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -12,18 +13,28 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: "BIA Tracker",
-  description: "Track your body composition analysis over time",
-  viewport: "width=device-width, initial-scale=1, maximum-scale=1",
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#f9fafb" },
     { media: "(prefers-color-scheme: dark)", color: "#030712" },
   ],
+};
+
+export const metadata: Metadata = {
+  title: "BIA Tracker",
+  description: "Track your body composition analysis over time",
+  manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
     title: "BIA Tracker",
+  },
+  icons: {
+    icon: "/icon-192.png",
+    apple: "/icon-192.png",
   },
 };
 
@@ -38,6 +49,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         {children}
+        <ServiceWorkerRegistration />
       </body>
     </html>
   );

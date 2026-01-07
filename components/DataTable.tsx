@@ -85,7 +85,7 @@ function formatDate(isoDate: string): string {
 
 export default function DataTable({ entries, onDelete }: DataTableProps) {
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
-    new Set(['core', 'composition'])
+    new Set(['header', 'core', 'segmental-muscle', 'segmental-fat'])
   );
 
   const toggleCategory = (category: string) => {
@@ -105,8 +105,6 @@ export default function DataTable({ entries, onDelete }: DataTableProps) {
       </div>
     );
   }
-
-  const categories = ['header', 'core', 'composition', 'additional', 'recommendations'] as const;
 
   return (
     <div className="overflow-x-auto">
@@ -137,12 +135,11 @@ export default function DataTable({ entries, onDelete }: DataTableProps) {
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-100 dark:divide-gray-800/50">
-          {categories.map((category) => {
+          {/* Header & Core */}
+          {(['header', 'core'] as const).map((category) => {
             const metricsInCategory = METRIC_DEFINITIONS.filter(
               (m) => m.category === category
             );
-            const isExpanded = expandedCategories.has(category);
-
             return (
               <CategorySection
                 key={category}
@@ -150,12 +147,13 @@ export default function DataTable({ entries, onDelete }: DataTableProps) {
                 categoryLabel={CATEGORY_LABELS[category]}
                 metrics={metricsInCategory}
                 entries={entries}
-                isExpanded={isExpanded}
+                isExpanded={expandedCategories.has(category)}
                 onToggle={() => toggleCategory(category)}
               />
             );
           })}
 
+          {/* Segmental sections right after core */}
           <SegmentalSection
             title="Segmental Muscle"
             isExpanded={expandedCategories.has('segmental-muscle')}
@@ -168,6 +166,7 @@ export default function DataTable({ entries, onDelete }: DataTableProps) {
               { key: 'muscleLeftLeg', label: 'Left Leg' },
               { key: 'muscleRightLeg', label: 'Right Leg' },
             ]}
+            higherIsBetter={true}
           />
 
           <SegmentalSection
@@ -182,7 +181,26 @@ export default function DataTable({ entries, onDelete }: DataTableProps) {
               { key: 'fatLeftLeg', label: 'Left Leg' },
               { key: 'fatRightLeg', label: 'Right Leg' },
             ]}
+            higherIsBetter={false}
           />
+
+          {/* Remaining sections */}
+          {(['composition', 'additional', 'recommendations'] as const).map((category) => {
+            const metricsInCategory = METRIC_DEFINITIONS.filter(
+              (m) => m.category === category
+            );
+            return (
+              <CategorySection
+                key={category}
+                category={category}
+                categoryLabel={CATEGORY_LABELS[category]}
+                metrics={metricsInCategory}
+                entries={entries}
+                isExpanded={expandedCategories.has(category)}
+                onToggle={() => toggleCategory(category)}
+              />
+            );
+          })}
         </tbody>
       </table>
     </div>
@@ -294,6 +312,28 @@ interface SegmentalSectionProps {
   onToggle: () => void;
   entries: BIAEntry[];
   fields: Array<{ key: keyof BIAEntry; label: string }>;
+  higherIsBetter: boolean;
+}
+
+function getSegmentalTrendIndicator(
+  current: number,
+  previous: number | undefined,
+  higherIsBetter: boolean
+): { color: string; arrow: string } {
+  if (previous === undefined || current === 0 || previous === 0) {
+    return { color: '', arrow: '' };
+  }
+
+  const diff = current - previous;
+  if (Math.abs(diff) < 0.1) return { color: '', arrow: '' };
+
+  const isIncrease = diff > 0;
+  const improved = higherIsBetter ? isIncrease : !isIncrease;
+
+  return {
+    color: improved ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500 dark:text-red-400',
+    arrow: isIncrease ? '↑' : '↓'
+  };
 }
 
 function SegmentalSection({
@@ -302,6 +342,7 @@ function SegmentalSection({
   onToggle,
   entries,
   fields,
+  higherIsBetter,
 }: SegmentalSectionProps) {
   return (
     <>
@@ -335,17 +376,29 @@ function SegmentalSection({
             <td className="sticky left-0 bg-white dark:bg-gray-900 px-4 py-1.5 text-gray-600 dark:text-gray-300">
               <span className="text-xs">{field.label}</span>
             </td>
-            {entries.map((entry) => {
-              const value = entry[field.key];
+            {entries.map((entry, entryIdx) => {
+              const value = entry[field.key] as { lb: number; percent: number } | undefined;
+              const currentLb = value?.lb || 0;
+
+              const previousEntry = entries[entryIdx + 1];
+              const previousValue = previousEntry?.[field.key] as { lb: number; percent: number } | undefined;
+              const previousLb = previousValue?.lb || 0;
+
+              const { color, arrow } = getSegmentalTrendIndicator(currentLb, previousLb, higherIsBetter);
+
               return (
                 <td
                   key={entry.id}
                   className="px-3 py-1.5 text-center"
                 >
-                  <span className="text-xs inline-flex items-center justify-center gap-1.5 text-gray-900 dark:text-gray-100">
+                  <span className={`text-xs inline-flex items-center justify-center gap-1.5 ${color || 'text-gray-900 dark:text-gray-100'}`}>
                     <span className="w-1.5" />
                     <span className="tabular-nums w-14 text-right">{formatValue(value)}</span>
-                    <span className="w-3" />
+                    {arrow ? (
+                      <span className="text-[10px] w-3">{arrow}</span>
+                    ) : (
+                      <span className="w-3" />
+                    )}
                   </span>
                 </td>
               );
