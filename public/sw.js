@@ -1,4 +1,4 @@
-const CACHE_NAME = 'bia-tracker-v1';
+const CACHE_NAME = 'bia-tracker-v2';
 const SHARE_CACHE = 'shared-files';
 
 // Install service worker
@@ -56,7 +56,27 @@ self.addEventListener('fetch', (event) => {
 async function handleShareTarget(request) {
   try {
     const formData = await request.formData();
-    const file = formData.get('image');
+
+    // Try multiple possible parameter names for the file
+    let file = formData.get('image');
+
+    // iOS might use different parameter names
+    if (!file || !(file instanceof File)) {
+      file = formData.get('file');
+    }
+    if (!file || !(file instanceof File)) {
+      file = formData.get('files');
+    }
+
+    // Also try iterating through all form entries to find any file
+    if (!file || !(file instanceof File)) {
+      for (const [key, value] of formData.entries()) {
+        if (value instanceof File && value.type.startsWith('image/')) {
+          file = value;
+          break;
+        }
+      }
+    }
 
     if (file && file instanceof File) {
       // Store the shared file in cache for the share page to pick up
@@ -68,9 +88,12 @@ async function handleShareTarget(request) {
         await cache.delete(key);
       }
 
-      // Store the new file
+      // Store the new file with timestamp to prevent caching issues
       const response = new Response(file, {
-        headers: { 'Content-Type': file.type }
+        headers: {
+          'Content-Type': file.type,
+          'X-Timestamp': Date.now().toString()
+        }
       });
       await cache.put('/shared-image', response);
     }

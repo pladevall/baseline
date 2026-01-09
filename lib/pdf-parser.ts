@@ -67,11 +67,12 @@ export function parseBIAReport(text: string): BIAEntry {
                                 text.match(/Body\s*Water\s*(\d{2}\.\d)%/i);
   const bodyWaterPercentage = bodyWaterPercentMatch ? parseFloat(bodyWaterPercentMatch[1]) : 0;
 
-  // Body Water absolute (lb) - calculate from weight and percentage
-  const bodyWater = weight > 0 && bodyWaterPercentage > 0
-    ? Math.round(weight * bodyWaterPercentage / 100 * 10) / 10
-    : 0;
-  console.log('Body Water:', bodyWater, 'lb (calculated from', bodyWaterPercentage, '%)');
+  // Body Water absolute in Liters - look for "Body Water 45.2L" or "Body Water 45.2 L" or in composition section
+  // Pattern: number followed by L (not lb), typically 30-60 range
+  const bodyWaterLMatch = text.match(/Body\s*Water\s*(\d{2}\.?\d*)\s*L(?!b)/i) ||
+                          text.match(/(\d{2}\.\d)\s*L\s*(?=.*Body\s*Water)/i);
+  const bodyWater = bodyWaterLMatch ? parseFloat(bodyWaterLMatch[1]) : 0;
+  console.log('Body Water:', bodyWater, 'L');
 
   // Protein Percentage - "Protein 19.3%" or "Protein Percentage 19.3"
   const proteinPercentMatch = text.match(/Protein\s*Percentage\s*(\d+\.?\d*)/i) ||
@@ -169,7 +170,7 @@ export function parseBIAReport(text: string): BIAEntry {
   const waistHipRatio = waistHipMatch ? parseFloat(waistHipMatch[1]) : 0;
   console.log('Waist-Hip Ratio:', waistHipRatio);
 
-  // Parse segmental data - multiple patterns needed due to OCR variations
+  // Parse segmental data
   const defaultSegmental = { lb: 0, percent: 0 };
 
   let muscleLeftArm = defaultSegmental;
@@ -183,102 +184,111 @@ export function parseBIAReport(text: string): BIAEntry {
   let fatLeftLeg = defaultSegmental;
   let fatRightLeg = defaultSegmental;
 
-  // Helper to extract segmental pairs from a section of text
-  function extractSegmentalPairs(sectionText: string): Array<{lb: number, percent: number}> {
-    const pairs: Array<{lb: number, percent: number}> = [];
+  // New format parsing - line by line approach
+  // Left pattern: "® 9.6lb MW 125.7%" or "@® 23.2Ib MW 107.4%"
+  // Right pattern: "HM 127.4% @9.8lb" or "HM 108.2% @ 23.4lb"
+  // Trunk pattern: "@® 66.4lb MW 108.2%" (single value)
 
-    // Multiple patterns to handle OCR variations
-    const patterns = [
-      // Pattern 1: "@ 9.6lb MW 125.7%" or "® 9.6lb MW 125.7%" or "© 9.6lb W 125.7%"
-      /[@®©⊕O0]\s*(\d+\.?\d*)\s*(?:l|I|\|)?b?\s*(?:MW|W|M)\s*(\d+\.?\d*)%/gi,
-      // Pattern 2: Just number + lb + percentage (simpler)
-      /(\d+\.?\d*)\s*(?:l|I|\|)?b\s+(?:MW|W|M)?\s*(\d+\.?\d*)%/gi,
-      // Pattern 3: "HM 127.4% @9.8lb" (right side values)
-      /(?:HM|H|M)\s*(\d+\.?\d*)%\s*[@®©⊕O0]\s*(\d+\.?\d*)\s*(?:l|I|\|)?b/gi,
-    ];
+  function parseSegmentalSection(sectionText: string): {
+    leftUpper: { lb: number; percent: number };
+    rightUpper: { lb: number; percent: number };
+    trunk: { lb: number; percent: number };
+    leftLower: { lb: number; percent: number };
+    rightLower: { lb: number; percent: number };
+  } {
+    const result = {
+      leftUpper: { lb: 0, percent: 0 },
+      rightUpper: { lb: 0, percent: 0 },
+      trunk: { lb: 0, percent: 0 },
+      leftLower: { lb: 0, percent: 0 },
+      rightLower: { lb: 0, percent: 0 },
+    };
 
-    // Try each pattern
-    for (const pattern of patterns) {
-      const matches = [...sectionText.matchAll(pattern)];
-      for (const m of matches) {
-        // Pattern 3 has percent first, lb second
-        if (pattern.source.startsWith('(?:HM')) {
-          pairs.push({ lb: parseFloat(m[2]), percent: parseFloat(m[1]) });
-        } else {
-          pairs.push({ lb: parseFloat(m[1]), percent: parseFloat(m[2]) });
-        }
+    // Split into lines for easier parsing
+    const lines = sectionText.split('\n');
+
+    // Find lines with the actual data (contain lb and %)
+    const dataLines = lines.filter(line =>
+      line.includes('lb') && line.includes('%') ||
+      line.includes('Ib') && line.includes('%') ||
+      line.includes('|b') && line.includes('%') ||
+      line.includes('|p') && line.includes('%')
+    );
+
+    console.log('Data lines found:', dataLines.length);
+    dataLines.forEach((l, i) => console.log(`  Line ${i}: ${l}`));
+
+    // Extract left-side values: "[@®©] X.Xlb [MW|W] X.X%"
+    const leftPattern = /[@®©⊕]\s*(\d+\.?\d*)\s*(?:l|I|\|)?[bp]\s*(?:MW|W|M)?\s*(\d+\.?\d*)%/gi;
+
+    // Extract right-side values: "[HM|H] X.X% [@®©] X.Xlb"
+    const rightPattern = /(?:HM|H)\s*(\d+\.?\d*)%\s*[@®©⊕]\s*(\d+\.?\d*)\s*(?:l|I|\|)?[bp]/gi;
+
+    const leftMatches: Array<{ lb: number; percent: number }> = [];
+    const rightMatches: Array<{ lb: number; percent: number }> = [];
+
+    for (const line of dataLines) {
+      // Find left-side match
+      const leftMatch = [...line.matchAll(leftPattern)];
+      for (const m of leftMatch) {
+        leftMatches.push({ lb: parseFloat(m[1]), percent: parseFloat(m[2]) });
+      }
+
+      // Find right-side match
+      const rightMatch = [...line.matchAll(rightPattern)];
+      for (const m of rightMatch) {
+        rightMatches.push({ lb: parseFloat(m[2]), percent: parseFloat(m[1]) });
       }
     }
 
-    // Also try finding lb values directly with nearby percentages
-    // Pattern: find all "X.Xlb" or "X.XIb" values
-    const lbMatches = [...sectionText.matchAll(/(\d+\.?\d*)\s*(?:l|I|\|)?b(?!\w)/gi)];
-    const percentMatches = [...sectionText.matchAll(/(\d+\.?\d*)%/gi)];
+    console.log('Left matches:', leftMatches);
+    console.log('Right matches:', rightMatches);
 
-    console.log(`  Found ${lbMatches.length} lb values, ${percentMatches.length} percent values`);
+    // Assign values based on position:
+    // Upper extremities come first, then trunk, then lower extremities
+    // Left values: [upper, trunk, lower] - 3 values
+    // Right values: [upper, lower] - 2 values (trunk is single/left-aligned)
 
-    return pairs;
+    if (leftMatches.length >= 1) result.leftUpper = leftMatches[0];
+    if (rightMatches.length >= 1) result.rightUpper = rightMatches[0];
+    if (leftMatches.length >= 2) result.trunk = leftMatches[1];
+    if (leftMatches.length >= 3) result.leftLower = leftMatches[2];
+    if (rightMatches.length >= 2) result.rightLower = rightMatches[1];
+
+    return result;
   }
 
-  // Try to extract muscle balance section values - more flexible section detection
+  // Extract muscle balance section
   const muscleBalanceSection = text.match(/Muscle\s*balance[\s\S]*?(?:Segmental\s*fat|Fat\s*analysis)/i) ||
-                               text.match(/Soft\s*lean\s*mass[\s\S]*?(?:Segmental\s*fat|Fat\s*analysis)/i);
-  const fatAnalysisSection = text.match(/(?:Segmental\s*fat|Fat\s*analysis)[\s\S]*?(?:Other\s*Measurements|Body\s*Type|$)/i);
+                               text.match(/Muscle\s*balance[\s\S]*?(?:©\s*Muscle\s*Mass)/i);
+
+  // Extract segmental fat section
+  const fatAnalysisSection = text.match(/Segmental\s*fat\s*analysis[\s\S]*?(?:Other\s*Measurements|©\s*Fat)/i) ||
+                             text.match(/Segmental\s*fat[\s\S]*?(?:Other\s*Measurements|©\s*Fat)/i);
 
   console.log('Muscle section found:', !!muscleBalanceSection);
   console.log('Fat section found:', !!fatAnalysisSection);
 
   if (muscleBalanceSection) {
-    const muscleText = muscleBalanceSection[0];
-    console.log('Muscle section length:', muscleText.length);
-
-    const musclePairs = extractSegmentalPairs(muscleText);
-    console.log('Muscle pairs found:', musclePairs.length);
-    musclePairs.forEach((p, i) => console.log(`  M${i}: ${p.lb}lb / ${p.percent}%`));
-
-    // Need at least 5 pairs for all body parts (left arm, right arm, trunk, left leg, right leg)
-    if (musclePairs.length >= 5) {
-      muscleLeftArm = extractSegmentalData(musclePairs[0].lb, musclePairs[0].percent);
-      muscleRightArm = extractSegmentalData(musclePairs[1].lb, musclePairs[1].percent);
-      muscleTrunk = extractSegmentalData(musclePairs[2].lb, musclePairs[2].percent);
-      muscleLeftLeg = extractSegmentalData(musclePairs[3].lb, musclePairs[3].percent);
-      muscleRightLeg = extractSegmentalData(musclePairs[4].lb, musclePairs[4].percent);
-    } else if (musclePairs.length > 0) {
-      // Try to use what we have
-      console.log('Using partial muscle data');
-      if (musclePairs[0]) muscleLeftArm = extractSegmentalData(musclePairs[0].lb, musclePairs[0].percent);
-      if (musclePairs[1]) muscleRightArm = extractSegmentalData(musclePairs[1].lb, musclePairs[1].percent);
-      if (musclePairs[2]) muscleTrunk = extractSegmentalData(musclePairs[2].lb, musclePairs[2].percent);
-      if (musclePairs[3]) muscleLeftLeg = extractSegmentalData(musclePairs[3].lb, musclePairs[3].percent);
-      if (musclePairs[4]) muscleRightLeg = extractSegmentalData(musclePairs[4].lb, musclePairs[4].percent);
-    }
+    const muscleData = parseSegmentalSection(muscleBalanceSection[0]);
+    muscleLeftArm = extractSegmentalData(muscleData.leftUpper.lb, muscleData.leftUpper.percent);
+    muscleRightArm = extractSegmentalData(muscleData.rightUpper.lb, muscleData.rightUpper.percent);
+    muscleTrunk = extractSegmentalData(muscleData.trunk.lb, muscleData.trunk.percent);
+    muscleLeftLeg = extractSegmentalData(muscleData.leftLower.lb, muscleData.leftLower.percent);
+    muscleRightLeg = extractSegmentalData(muscleData.rightLower.lb, muscleData.rightLower.percent);
   }
 
   if (fatAnalysisSection) {
-    const fatText = fatAnalysisSection[0];
-    console.log('Fat section length:', fatText.length);
-
-    const fatPairs = extractSegmentalPairs(fatText);
-    console.log('Fat pairs found:', fatPairs.length);
-    fatPairs.forEach((p, i) => console.log(`  F${i}: ${p.lb}lb / ${p.percent}%`));
-
-    if (fatPairs.length >= 5) {
-      fatLeftArm = extractSegmentalData(fatPairs[0].lb, fatPairs[0].percent);
-      fatRightArm = extractSegmentalData(fatPairs[1].lb, fatPairs[1].percent);
-      fatTrunk = extractSegmentalData(fatPairs[2].lb, fatPairs[2].percent);
-      fatLeftLeg = extractSegmentalData(fatPairs[3].lb, fatPairs[3].percent);
-      fatRightLeg = extractSegmentalData(fatPairs[4].lb, fatPairs[4].percent);
-    } else if (fatPairs.length > 0) {
-      console.log('Using partial fat data');
-      if (fatPairs[0]) fatLeftArm = extractSegmentalData(fatPairs[0].lb, fatPairs[0].percent);
-      if (fatPairs[1]) fatRightArm = extractSegmentalData(fatPairs[1].lb, fatPairs[1].percent);
-      if (fatPairs[2]) fatTrunk = extractSegmentalData(fatPairs[2].lb, fatPairs[2].percent);
-      if (fatPairs[3]) fatLeftLeg = extractSegmentalData(fatPairs[3].lb, fatPairs[3].percent);
-      if (fatPairs[4]) fatRightLeg = extractSegmentalData(fatPairs[4].lb, fatPairs[4].percent);
-    }
+    const fatData = parseSegmentalSection(fatAnalysisSection[0]);
+    fatLeftArm = extractSegmentalData(fatData.leftUpper.lb, fatData.leftUpper.percent);
+    fatRightArm = extractSegmentalData(fatData.rightUpper.lb, fatData.rightUpper.percent);
+    fatTrunk = extractSegmentalData(fatData.trunk.lb, fatData.trunk.percent);
+    fatLeftLeg = extractSegmentalData(fatData.leftLower.lb, fatData.leftLower.percent);
+    fatRightLeg = extractSegmentalData(fatData.rightLower.lb, fatData.rightLower.percent);
   }
 
   console.log('Segmental Muscle Left Arm:', muscleLeftArm);
+  console.log('Segmental Muscle Right Arm:', muscleRightArm);
   console.log('Segmental Fat Left Arm:', fatLeftArm);
 
   // Body Shape / Body Type - "Body Type Normal"

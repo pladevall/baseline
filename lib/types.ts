@@ -104,7 +104,6 @@ export const METRIC_DEFINITIONS: MetricDefinition[] = [
   // Additional Data
   { key: 'lbm', label: 'LBM (Fat-free Body Weight)', unit: 'lb', normalRange: { min: 124.2, max: 151.8 }, higherIsBetter: true, category: 'additional' },
   { key: 'bmr', label: 'BMR (Basal Metabolic Rate)', unit: 'kcal', normalRange: { min: 1657, max: 1945.6 }, higherIsBetter: true, category: 'additional' },
-  { key: 'metabolicAge', label: 'Metabolic Age', unit: 'years', higherIsBetter: false, category: 'additional' },
   { key: 'subcutaneousFatPercentage', label: 'Subcutaneous Fat %', unit: '%', normalRange: { min: 8.6, max: 16.7 }, higherIsBetter: false, category: 'additional' },
   { key: 'muscleMassPercentage', label: 'Muscle Mass %', unit: '%', normalRange: { min: 67.3, max: 82.3 }, higherIsBetter: true, category: 'additional' },
   { key: 'skeletalMusclePercentage', label: 'Skeletal Muscle %', unit: '%', normalRange: { min: 40.5, max: 49.5 }, higherIsBetter: true, category: 'additional' },
@@ -113,6 +112,7 @@ export const METRIC_DEFINITIONS: MetricDefinition[] = [
   { key: 'bodyWaterPercentage', label: 'Body Water %', unit: '%', normalRange: { min: 50, max: 65 }, higherIsBetter: true, category: 'additional' },
   { key: 'smi', label: 'SMI', unit: '', normalRange: { min: 7, max: 8.6 }, higherIsBetter: true, category: 'additional' },
   { key: 'waistHipRatio', label: 'Waist-Hip Ratio', unit: '', normalRange: { min: 0, max: 0.9 }, higherIsBetter: false, category: 'additional' },
+  { key: 'metabolicAge', label: 'Metabolic Age', unit: 'years', higherIsBetter: false, category: 'additional' },
 
   // Weight Control (these are targets/recommendations, not tracked metrics)
   { key: 'normalWeight', label: 'Target Weight', unit: 'lb', category: 'recommendations' },
@@ -235,4 +235,15 @@ export const BODYSPEC_BIA_MAPPINGS: MetricMapping[] = [
     unit: '',
     expectedVariance: 10,
   },
+];
+
+// Metrics that can have goals
+export const GOAL_ELIGIBLE_METRICS: (keyof BIAEntry)[] = [
+  'bodyFatPercentage',
+  'skeletalMuscle',
+  'muscleLeftArm',
+  'muscleRightArm',
+  'muscleTrunk',
+  'muscleLeftLeg',
+  'muscleRightLeg',
 ];

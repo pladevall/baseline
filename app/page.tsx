@@ -8,12 +8,13 @@ import BodyspecSyncButton from '@/components/BodyspecSyncButton';
 import { BIAEntry, BodyspecScan } from '@/lib/types';
 import { parsePDFFile } from '@/lib/client-pdf-parser';
 import ThemeToggle from '@/components/ThemeToggle';
-import { getEntriesFromDb, saveEntryToDb, deleteEntryFromDb, migrateFromLocalStorage } from '@/lib/supabase';
+import { getEntriesFromDb, saveEntryToDb, deleteEntryFromDb, migrateFromLocalStorage, getPendingImages, deletePendingImage, saveOcrDebug, getGoals, saveGoal, deleteGoal, Goal } from '@/lib/supabase';
 
 export default function Home() {
   const [entries, setEntries] = useState<BIAEntry[]>([]);
   const [bodyspecScans, setBodyspecScans] = useState<BodyspecScan[]>([]);
   const [bodyspecConnections, setBodyspecConnections] = useState<any[]>([]);
+  const [goals, setGoals] = useState<Goal[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [progress, setProgress] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
@@ -49,9 +50,61 @@ export default function Home() {
           console.log(`Migrated ${migrated} entries from localStorage`);
         }
 
-        // Then fetch from cloud
-        const cloudEntries = await getEntriesFromDb();
+        // Check for pending images from iOS Shortcut
+        const pendingImages = await getPendingImages();
+        if (pendingImages.length > 0) {
+          setIsLoading(true);
+          setProgress(`Processing ${pendingImages.length} pending image(s)...`);
+
+          for (let i = 0; i < pendingImages.length; i++) {
+            const pending = pendingImages[i];
+            try {
+              setProgress(`Processing ${i + 1}/${pendingImages.length}...`);
+
+              // Convert base64 to File
+              const byteString = atob(pending.data);
+              const ab = new ArrayBuffer(byteString.length);
+              const ia = new Uint8Array(ab);
+              for (let j = 0; j < byteString.length; j++) {
+                ia[j] = byteString.charCodeAt(j);
+              }
+              const blob = new Blob([ab], { type: pending.content_type });
+              const file = new File([blob], 'pending-image.png', { type: pending.content_type });
+
+              // Process with OCR
+              const { entry, rawText } = await parsePDFFile(file, (msg) => {
+                setProgress(`(${i + 1}/${pendingImages.length}) ${msg}`);
+              });
+
+              // Save raw OCR text for debugging
+              await saveOcrDebug(pending.id, rawText);
+
+              const hasData = entry.weight > 0 || entry.bodyFatPercentage > 0 || entry.fitnessScore > 0;
+
+              if (hasData) {
+                await saveEntryToDb(entry);
+              }
+
+              // Delete processed image
+              await deletePendingImage(pending.id);
+            } catch (err) {
+              console.error('Error processing pending image:', err);
+              // Still delete to avoid re-processing bad images
+              await deletePendingImage(pending.id);
+            }
+          }
+
+          setProgress('');
+          setIsLoading(false);
+        }
+
+        // Fetch entries and goals from cloud
+        const [cloudEntries, cloudGoals] = await Promise.all([
+          getEntriesFromDb(),
+          getGoals(),
+        ]);
         setEntries(cloudEntries);
+        setGoals(cloudGoals);
 
         // Load Bodyspec data
         await loadBodyspecData();
@@ -125,6 +178,28 @@ export default function Home() {
         console.error('Delete error:', err);
         setError('Failed to delete entry');
       }
+    }
+  }, []);
+
+  const handleSaveGoal = useCallback(async (metricKey: string, targetValue: number) => {
+    try {
+      await saveGoal(metricKey, targetValue);
+      const cloudGoals = await getGoals();
+      setGoals(cloudGoals);
+    } catch (err) {
+      console.error('Save goal error:', err);
+      setError('Failed to save goal');
+    }
+  }, []);
+
+  const handleDeleteGoal = useCallback(async (metricKey: string) => {
+    try {
+      await deleteGoal(metricKey);
+      const cloudGoals = await getGoals();
+      setGoals(cloudGoals);
+    } catch (err) {
+      console.error('Delete goal error:', err);
+      setError('Failed to delete goal');
     }
   }, []);
 
@@ -259,7 +334,13 @@ export default function Home() {
               </span>
             )}
           </div>
-          <DataTable entries={entries} onDelete={handleDelete} />
+          <DataTable
+              entries={entries}
+              goals={goals}
+              onDelete={handleDelete}
+              onSaveGoal={handleSaveGoal}
+              onDeleteGoal={handleDeleteGoal}
+            />
         </section>
       </div>
     </div>

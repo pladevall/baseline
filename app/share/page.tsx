@@ -14,47 +14,59 @@ export default function SharePage() {
     // Handle shared files from service worker
     const handleSharedFile = async () => {
       try {
-        // Check if there's a pending share in the cache
-        if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-          // Request the shared file from service worker
+        // Wait for service worker to be ready
+        if ('serviceWorker' in navigator) {
+          await navigator.serviceWorker.ready;
+        }
+
+        // Retry a few times in case of timing issues
+        let file: File | null = null;
+        for (let attempt = 0; attempt < 5; attempt++) {
           const cache = await caches.open('shared-files');
-          const keys = await cache.keys();
+          const response = await cache.match('/shared-image');
 
-          if (keys.length > 0) {
-            const response = await cache.match(keys[0]);
-            if (response) {
-              const blob = await response.blob();
-              const file = new File([blob], 'shared-image.png', { type: blob.type });
+          if (response) {
+            const blob = await response.blob();
+            file = new File([blob], 'shared-image.png', { type: blob.type || 'image/png' });
 
-              // Clear the cache
-              await cache.delete(keys[0]);
+            // Clear the cache
+            await cache.delete('/shared-image');
+            break;
+          }
 
-              // Process the file
-              setMessage('Scanning image...');
-              const { entry } = await parsePDFFile(file, setMessage);
-
-              const hasData = entry.weight > 0 || entry.bodyFatPercentage > 0 || entry.fitnessScore > 0;
-
-              if (!hasData) {
-                setStatus('error');
-                setMessage('Could not extract data from image. Please try a clearer screenshot.');
-                setTimeout(() => router.push('/'), 3000);
-                return;
-              }
-
-              setMessage('Saving to cloud...');
-              await saveEntryToDb(entry);
-
-              setStatus('success');
-              setMessage('Entry saved successfully!');
-              setTimeout(() => router.push('/'), 1500);
-              return;
-            }
+          // Wait a bit before retrying
+          if (attempt < 4) {
+            await new Promise(resolve => setTimeout(resolve, 200));
           }
         }
 
+        if (file) {
+          // Process the file
+          setMessage('Scanning image...');
+          const { entry } = await parsePDFFile(file, setMessage);
+
+          const hasData = entry.weight > 0 || entry.bodyFatPercentage > 0 || entry.fitnessScore > 0;
+
+          if (!hasData) {
+            setStatus('error');
+            setMessage('Could not extract data from image. Please try a clearer screenshot.');
+            setTimeout(() => router.push('/'), 3000);
+            return;
+          }
+
+          setMessage('Saving to cloud...');
+          await saveEntryToDb(entry);
+
+          setStatus('success');
+          setMessage('Entry saved successfully!');
+          setTimeout(() => router.push('/'), 1500);
+          return;
+        }
+
         // No shared file found, redirect home
-        router.push('/');
+        setStatus('error');
+        setMessage('No image received. Please try sharing again.');
+        setTimeout(() => router.push('/'), 2000);
       } catch (error) {
         console.error('Share processing error:', error);
         setStatus('error');
