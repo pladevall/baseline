@@ -245,6 +245,30 @@ export default function Home() {
     }
   }, []);
 
+  const handleDisconnect = useCallback(async (connectionId: string) => {
+    if (!confirm('Are you sure you want to disconnect? This will delete all synced scans.')) {
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/bodyspec/disconnect', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ connectionId }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to disconnect');
+      }
+
+      // Refresh data
+      await loadBodyspecData();
+    } catch (err) {
+      console.error('Disconnect error:', err);
+      setError('Failed to disconnect');
+    }
+  }, [loadBodyspecData]);
+
   if (isInitializing) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center">
@@ -310,12 +334,31 @@ export default function Home() {
             <div className="border-t border-gray-200 dark:border-gray-800 p-4 space-y-4">
               {/* Connection status + sync button in one row */}
               <div className="flex items-center justify-between">
-                <BodyspecConnect onConnectionChange={loadBodyspecData} />
-                {bodyspecConnections.length > 0 && (
-                  <BodyspecSyncButton
-                    connection={bodyspecConnections[0]}
-                    onSyncComplete={loadBodyspecData}
+                <div className="flex-1">
+                  <BodyspecConnect
+                    connections={bodyspecConnections}
+                    onConnectionChange={loadBodyspecData}
                   />
+                  {bodyspecConnections.length > 0 && (
+                    <div className="text-sm text-green-700 dark:text-green-400 font-medium">
+                      Connected as {bodyspecConnections[0].name || 'Bodyspec User'}
+                    </div>
+                  )}
+                </div>
+
+                {bodyspecConnections.length > 0 && (
+                  <div className="flex items-center gap-3">
+                    <BodyspecSyncButton
+                      connection={bodyspecConnections[0]}
+                      onSyncComplete={loadBodyspecData}
+                    />
+                    <button
+                      onClick={() => handleDisconnect(bodyspecConnections[0].id)}
+                      className="text-sm px-3 py-1.5 text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors border border-transparent hover:border-red-200 dark:hover:border-red-800"
+                    >
+                      Disconnect
+                    </button>
+                  </div>
                 )}
               </div>
 
