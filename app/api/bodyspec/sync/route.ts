@@ -8,9 +8,12 @@ import { createBodyspecClient } from '@/lib/bodyspec-client';
 import { getConnection, updateSyncStatus, saveScans } from '@/lib/supabase-bodyspec';
 
 export async function POST(request: NextRequest) {
+  let connectionId: string | undefined;
+
   try {
     const body = await request.json();
-    const { connectionId, startDate, endDate } = body;
+    connectionId = body.connectionId;
+    const { startDate, endDate } = body;
 
     if (!connectionId) {
       return NextResponse.json(
@@ -58,10 +61,9 @@ export async function POST(request: NextRequest) {
     console.error('Error syncing Bodyspec data:', error);
 
     // Try to update status to error
-    const body = await request.json();
-    if (body.connectionId) {
+    if (connectionId) {
       try {
-        await updateSyncStatus(body.connectionId, 'error');
+        await updateSyncStatus(connectionId, 'error');
       } catch {
         // Ignore error updating status
       }

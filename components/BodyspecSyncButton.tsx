@@ -2,7 +2,6 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { BodyspecConnection, BodyspecScan } from '@/lib/types';
-import { getSyncStatusDisplay } from '@/lib/bodyspec-sync';
 
 interface BodyspecSyncButtonProps {
   connection: Omit<BodyspecConnection, 'accessToken'>;
@@ -81,75 +80,53 @@ export default function BodyspecSyncButton({
     }
   }, [connection.id, onSyncComplete]);
 
-  const syncStatus = getSyncStatusDisplay(connection as BodyspecConnection, lastScan);
-
   return (
-    <div className={`space-y-2 ${className}`}>
-      <div className="flex items-center gap-3">
-        <button
-          onClick={handleSync}
-          disabled={isSyncing || !syncStatus.canSync}
-          className={`px-4 py-2 rounded-md font-medium transition-colors ${
-            syncStatus.status === 'ready'
-              ? 'bg-amber-600 text-white hover:bg-amber-700'
-              : 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600'
-          } disabled:opacity-50 disabled:cursor-not-allowed`}
-        >
-          {isSyncing ? (
-            <span className="flex items-center gap-2">
-              <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                <circle
-                  className="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                  fill="none"
-                />
-                <path
-                  className="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                />
-              </svg>
-              Syncing...
-            </span>
-          ) : (
-            'Sync Now'
-          )}
-        </button>
+    <div className={`flex items-center gap-3 ${className}`}>
+      <button
+        onClick={handleSync}
+        disabled={isSyncing}
+        className="px-3 py-1.5 text-sm rounded-md font-medium transition-colors bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        {isSyncing ? (
+          <span className="flex items-center gap-2">
+            <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+              <circle
+                className="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                strokeWidth="4"
+                fill="none"
+              />
+              <path
+                className="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+              />
+            </svg>
+            Syncing...
+          </span>
+        ) : (
+          'Sync Now'
+        )}
+      </button>
 
-        {/* Status indicator */}
-        <div className="flex-1">
-          <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
-            {syncStatus.statusText}
-          </div>
-          {syncStatus.nextSyncInfo && (
-            <div className="text-xs text-gray-500 dark:text-gray-400">
-              {syncStatus.nextSyncInfo}
-            </div>
-          )}
-          {lastScan && (
-            <div className="text-xs text-gray-500 dark:text-gray-400">
-              Latest scan: {new Date(lastScan.scanDate).toLocaleDateString()}
-            </div>
-          )}
-        </div>
-      </div>
+      {/* Status info */}
+      {lastScan && (
+        <span className="text-xs text-gray-500 dark:text-gray-400">
+          Latest: {new Date(lastScan.scanDate).toLocaleDateString()}
+        </span>
+      )}
 
       {/* Error message */}
       {error && (
-        <div className="p-2 bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 rounded text-sm">
-          {error}
-        </div>
+        <span className="text-xs text-red-600 dark:text-red-400">{error}</span>
       )}
 
       {/* Success message */}
       {syncResult && (
-        <div className="p-2 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 rounded text-sm">
-          {syncResult}
-        </div>
+        <span className="text-xs text-green-600 dark:text-green-400">{syncResult}</span>
       )}
     </div>
   );

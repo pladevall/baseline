@@ -139,6 +139,8 @@ export interface BodyspecConnection {
   id: string;
   userId?: string;
   accessToken: string;
+  refreshToken?: string;
+  tokenExpiresAt?: string;
   tokenName: string;
   lastSync: string | null;
   syncStatus: 'connected' | 'error' | 'pending';

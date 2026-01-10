@@ -45,12 +45,17 @@ export async function saveConnection(
   connection: Omit<BodyspecConnection, 'id' | 'createdAt' | 'updatedAt'>
 ): Promise<BodyspecConnection> {
   const encryptedToken = encryptToken(connection.accessToken);
+  const encryptedRefreshToken = connection.refreshToken
+    ? encryptToken(connection.refreshToken)
+    : null;
 
   const { data, error } = await supabase
     .from('bodyspec_connections')
     .insert({
       user_id: connection.userId || null,
       access_token: encryptedToken,
+      refresh_token: encryptedRefreshToken,
+      token_expires_at: connection.tokenExpiresAt || null,
       token_name: connection.tokenName,
       last_sync: connection.lastSync || null,
       sync_status: connection.syncStatus,
@@ -67,12 +72,73 @@ export async function saveConnection(
     id: data.id,
     userId: data.user_id,
     accessToken: decryptToken(data.access_token),
+    refreshToken: data.refresh_token ? decryptToken(data.refresh_token) : undefined,
+    tokenExpiresAt: data.token_expires_at,
     tokenName: data.token_name,
     lastSync: data.last_sync,
     syncStatus: data.sync_status,
     createdAt: data.created_at,
     updatedAt: data.updated_at,
   };
+}
+
+/**
+ * Save a new Bodyspec connection from OAuth flow
+ * This is a simpler interface specifically for the OAuth callback
+ */
+export async function saveConnectionWithOAuth(params: {
+  accessToken: string;
+  refreshToken?: string;
+  tokenExpiresAt?: string;
+  tokenName: string;
+  syncStatus: 'connected' | 'error' | 'pending';
+}): Promise<BodyspecConnection> {
+  return saveConnection({
+    accessToken: params.accessToken,
+    refreshToken: params.refreshToken,
+    tokenExpiresAt: params.tokenExpiresAt,
+    tokenName: params.tokenName,
+    lastSync: null,
+    syncStatus: params.syncStatus,
+  });
+}
+
+/**
+ * Update tokens for an existing connection (used for token refresh)
+ */
+export async function updateConnectionTokens(
+  connectionId: string,
+  tokens: {
+    accessToken: string;
+    refreshToken?: string;
+    tokenExpiresAt?: string;
+  }
+): Promise<void> {
+  const encryptedToken = encryptToken(tokens.accessToken);
+  const encryptedRefreshToken = tokens.refreshToken
+    ? encryptToken(tokens.refreshToken)
+    : undefined;
+
+  const updates: Record<string, unknown> = {
+    access_token: encryptedToken,
+  };
+
+  if (encryptedRefreshToken) {
+    updates.refresh_token = encryptedRefreshToken;
+  }
+  if (tokens.tokenExpiresAt) {
+    updates.token_expires_at = tokens.tokenExpiresAt;
+  }
+
+  const { error } = await supabase
+    .from('bodyspec_connections')
+    .update(updates)
+    .eq('id', connectionId);
+
+  if (error) {
+    console.error('Error updating connection tokens:', error);
+    throw new Error(`Failed to update tokens: ${error.message}`);
+  }
 }
 
 /**
@@ -92,15 +158,17 @@ export async function getConnections(userId?: string): Promise<BodyspecConnectio
     return [];
   }
 
-  return (data || []).map(row => ({
-    id: row.id,
-    userId: row.user_id,
-    accessToken: decryptToken(row.access_token),
-    tokenName: row.token_name,
-    lastSync: row.last_sync,
-    syncStatus: row.sync_status,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
+  return (data || []).map((row: Record<string, unknown>) => ({
+    id: row.id as string,
+    userId: row.user_id as string | undefined,
+    accessToken: decryptToken(row.access_token as string),
+    refreshToken: row.refresh_token ? decryptToken(row.refresh_token as string) : undefined,
+    tokenExpiresAt: row.token_expires_at as string | undefined,
+    tokenName: row.token_name as string,
+    lastSync: row.last_sync as string | null,
+    syncStatus: row.sync_status as 'connected' | 'error' | 'pending',
+    createdAt: row.created_at as string,
+    updatedAt: row.updated_at as string,
   }));
 }
 
@@ -125,6 +193,8 @@ export async function getConnection(connectionId: string): Promise<BodyspecConne
     id: data.id,
     userId: data.user_id,
     accessToken: decryptToken(data.access_token),
+    refreshToken: data.refresh_token ? decryptToken(data.refresh_token) : undefined,
+    tokenExpiresAt: data.token_expires_at,
     tokenName: data.token_name,
     lastSync: data.last_sync,
     syncStatus: data.sync_status,

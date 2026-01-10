@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { BIAEntry, METRIC_DEFINITIONS, CATEGORY_LABELS, MetricDefinition, GOAL_ELIGIBLE_METRICS } from '@/lib/types';
+import { BIAEntry, BodyspecScan, BodyspecScanData, METRIC_DEFINITIONS, CATEGORY_LABELS, MetricDefinition, GOAL_ELIGIBLE_METRICS } from '@/lib/types';
 import { Goal } from '@/lib/supabase';
 import Tooltip from './Tooltip';
 import GoalEditor from './GoalEditor';
@@ -9,6 +9,7 @@ import GoalEditor from './GoalEditor';
 interface DataTableProps {
   entries: BIAEntry[];
   goals: Goal[];
+  bodyspecScans?: BodyspecScan[];
   onDelete: (id: string) => void;
   onSaveGoal: (metricKey: string, targetValue: number) => void;
   onDeleteGoal: (metricKey: string) => void;
@@ -43,8 +44,8 @@ function getTrendIndicator(
   const improved = metric.higherIsBetter
     ? diff > 0
     : metric.higherIsBetter === false
-    ? diff < 0
-    : null;
+      ? diff < 0
+      : null;
 
   if (improved === null) return { color: '', arrow: '' };
 
@@ -239,7 +240,62 @@ function getDaysBetweenEntries(latest: BIAEntry, comparison: BIAEntry | null): n
   return Math.round((latestDate.getTime() - comparisonDate.getTime()) / (24 * 60 * 60 * 1000));
 }
 
-export default function DataTable({ entries, goals, onDelete, onSaveGoal, onDeleteGoal }: DataTableProps) {
+/**
+ * Map BIA metric keys to DEXA scan data values
+ */
+function getDexaValueForMetric(scan: BodyspecScan, metricKey: string): number | null {
+  const data = scan.data;
+
+  // Direct mappings
+  switch (metricKey) {
+    case 'bodyFatPercentage':
+      return data.bodyFatPercentage;
+    case 'weight':
+      return data.weight;
+    case 'lbm':
+    case 'fatFreeMass':
+    case 'softLeanMass':
+      return data.leanBodyMass;
+    case 'bodyFatMass':
+      return data.totalBodyFat;
+    case 'boneMass':
+      return data.boneMineralContent ? data.boneMineralContent / 453.592 : null; // grams to lb
+    case 'visceralFat':
+      return data.visceralAdiposeTissue; // VAT in cm²
+    default:
+      return null;
+  }
+}
+
+/**
+ * Get DEXA regional value for segmental muscle metrics
+ */
+function getDexaSegmentalValue(scan: BodyspecScan, metricKey: string): number | null {
+  const regional = scan.data.regional;
+
+  const keyMapping: Record<string, { region: keyof typeof regional; type: 'lean' | 'fat' }> = {
+    muscleLeftArm: { region: 'leftArm', type: 'lean' },
+    muscleRightArm: { region: 'rightArm', type: 'lean' },
+    muscleTrunk: { region: 'trunk', type: 'lean' },
+    muscleLeftLeg: { region: 'leftLeg', type: 'lean' },
+    muscleRightLeg: { region: 'rightLeg', type: 'lean' },
+    fatLeftArm: { region: 'leftArm', type: 'fat' },
+    fatRightArm: { region: 'rightArm', type: 'fat' },
+    fatTrunk: { region: 'trunk', type: 'fat' },
+    fatLeftLeg: { region: 'leftLeg', type: 'fat' },
+    fatRightLeg: { region: 'rightLeg', type: 'fat' },
+  };
+
+  const mapping = keyMapping[metricKey];
+  if (!mapping) return null;
+
+  const regionData = regional[mapping.region];
+  if (!regionData) return null;
+
+  return mapping.type === 'lean' ? regionData.lean : regionData.fat;
+}
+
+export default function DataTable({ entries, goals, bodyspecScans = [], onDelete, onSaveGoal, onDeleteGoal }: DataTableProps) {
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
     new Set(['header', 'core', 'segmental-muscle', 'segmental-fat'])
   );
@@ -255,6 +311,11 @@ export default function DataTable({ entries, goals, onDelete, onSaveGoal, onDele
     }
     setExpandedCategories(newExpanded);
   };
+
+  // Sort DEXA scans by date descending (newest first on left, like BIA entries)
+  const sortedScans = [...bodyspecScans].sort((a, b) =>
+    new Date(b.scanDate).getTime() - new Date(a.scanDate).getTime()
+  );
 
   const comparisonEntry = getComparisonEntry(entries, trendPeriod);
   const goalsMap = new Map(goals.map(g => [g.metricKey, g.targetValue]));
@@ -290,11 +351,10 @@ export default function DataTable({ entries, goals, onDelete, onSaveGoal, onDele
                     <button
                       key={period}
                       onClick={() => setTrendPeriod(period)}
-                      className={`px-1.5 py-0.5 text-[9px] rounded transition-colors ${
-                        trendPeriod === period
-                          ? 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 font-medium'
-                          : 'text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
-                      }`}
+                      className={`px-1.5 py-0.5 text-[9px] rounded transition-colors ${trendPeriod === period
+                        ? 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 font-medium'
+                        : 'text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
+                        }`}
                     >
                       {getTrendPeriodLabel(period)}
                     </button>
@@ -302,6 +362,24 @@ export default function DataTable({ entries, goals, onDelete, onSaveGoal, onDele
                 </div>
               </div>
             </th>
+            {/* DEXA Scan Columns */}
+            {sortedScans.map((scan) => (
+              <th
+                key={scan.id}
+                className="px-3 py-2 text-center min-w-[100px] border-l border-amber-200 dark:border-amber-800/50 bg-amber-50/50 dark:bg-amber-900/20"
+              >
+                <div className="flex flex-col items-center gap-0.5">
+                  <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-700 dark:text-amber-300">
+                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    {formatDate(scan.scanDate)}
+                  </span>
+                  <span className="text-[10px] text-amber-600 dark:text-amber-400 font-medium">DEXA</span>
+                </div>
+              </th>
+            ))}
+            {/* BIA Entry Columns */}
             {entries.map((entry) => (
               <th
                 key={entry.id}
@@ -335,6 +413,7 @@ export default function DataTable({ entries, goals, onDelete, onSaveGoal, onDele
                 categoryLabel={CATEGORY_LABELS[category]}
                 metrics={metricsInCategory}
                 entries={entries}
+                bodyspecScans={sortedScans}
                 comparisonEntry={comparisonEntry}
                 isExpanded={expandedCategories.has(category)}
                 onToggle={() => toggleCategory(category)}
@@ -351,6 +430,7 @@ export default function DataTable({ entries, goals, onDelete, onSaveGoal, onDele
             isExpanded={expandedCategories.has('segmental-muscle')}
             onToggle={() => toggleCategory('segmental-muscle')}
             entries={entries}
+            bodyspecScans={sortedScans}
             comparisonEntry={comparisonEntry}
             fields={[
               { key: 'muscleLeftArm', label: 'Left Arm' },
@@ -370,6 +450,7 @@ export default function DataTable({ entries, goals, onDelete, onSaveGoal, onDele
             isExpanded={expandedCategories.has('segmental-fat')}
             onToggle={() => toggleCategory('segmental-fat')}
             entries={entries}
+            bodyspecScans={sortedScans}
             comparisonEntry={comparisonEntry}
             fields={[
               { key: 'fatLeftArm', label: 'Left Arm' },
@@ -396,6 +477,7 @@ export default function DataTable({ entries, goals, onDelete, onSaveGoal, onDele
                 categoryLabel={CATEGORY_LABELS[category]}
                 metrics={metricsInCategory}
                 entries={entries}
+                bodyspecScans={sortedScans}
                 comparisonEntry={comparisonEntry}
                 isExpanded={expandedCategories.has(category)}
                 onToggle={() => toggleCategory(category)}
@@ -427,6 +509,7 @@ interface CategorySectionProps {
   categoryLabel: string;
   metrics: MetricDefinition[];
   entries: BIAEntry[];
+  bodyspecScans: BodyspecScan[];
   comparisonEntry: BIAEntry | null;
   isExpanded: boolean;
   onToggle: () => void;
@@ -439,6 +522,7 @@ function CategorySection({
   categoryLabel,
   metrics,
   entries,
+  bodyspecScans,
   comparisonEntry,
   isExpanded,
   onToggle,
@@ -472,6 +556,14 @@ function CategorySection({
         <td className="bg-gray-50 dark:bg-gray-900/50 border-l border-gray-100 dark:border-gray-800/50" />
         <td className="bg-gray-50 dark:bg-gray-900/50 border-l border-gray-100 dark:border-gray-800/50" />
         <td className="bg-gray-50 dark:bg-gray-900/50 border-l border-gray-100 dark:border-gray-800/50" />
+        {/* DEXA scan cells */}
+        {bodyspecScans.map((scan) => (
+          <td
+            key={scan.id}
+            className="bg-amber-50/30 dark:bg-amber-900/10 border-l border-amber-200 dark:border-amber-800/50"
+          />
+        ))}
+        {/* BIA entry cells */}
         {entries.map((entry) => (
           <td
             key={entry.id}
@@ -564,6 +656,25 @@ function CategorySection({
                   {trendText}
                 </span>
               </td>
+              {/* DEXA scan data cells */}
+              {bodyspecScans.map((scan) => {
+                const dexaValue = getDexaValueForMetric(scan, metric.key as string);
+                return (
+                  <td
+                    key={scan.id}
+                    className="px-3 py-1.5 text-center border-l border-amber-200 dark:border-amber-800/50 bg-amber-50/30 dark:bg-amber-900/10"
+                  >
+                    {dexaValue !== null ? (
+                      <span className="text-xs tabular-nums font-medium text-amber-700 dark:text-amber-300">
+                        {dexaValue.toFixed(1)}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-gray-300 dark:text-gray-600">—</span>
+                    )}
+                  </td>
+                );
+              })}
+              {/* BIA entry data cells */}
               {entries.map((entry, entryIdx) => {
                 const value = entry[metric.key];
                 const previousEntry = entries[entryIdx + 1];
@@ -612,6 +723,7 @@ interface SegmentalSectionProps {
   isExpanded: boolean;
   onToggle: () => void;
   entries: BIAEntry[];
+  bodyspecScans: BodyspecScan[];
   comparisonEntry: BIAEntry | null;
   fields: Array<{ key: keyof BIAEntry; label: string }>;
   higherIsBetter: boolean;
@@ -646,6 +758,7 @@ function SegmentalSection({
   isExpanded,
   onToggle,
   entries,
+  bodyspecScans,
   comparisonEntry,
   fields,
   higherIsBetter,
@@ -679,6 +792,14 @@ function SegmentalSection({
         <td className="bg-gray-50 dark:bg-gray-900/50 border-l border-gray-100 dark:border-gray-800/50" />
         <td className="bg-gray-50 dark:bg-gray-900/50 border-l border-gray-100 dark:border-gray-800/50" />
         <td className="bg-gray-50 dark:bg-gray-900/50 border-l border-gray-100 dark:border-gray-800/50" />
+        {/* DEXA scan cells */}
+        {bodyspecScans.map((scan) => (
+          <td
+            key={scan.id}
+            className="bg-amber-50/30 dark:bg-amber-900/10 border-l border-amber-200 dark:border-amber-800/50"
+          />
+        ))}
+        {/* BIA entry cells */}
         {entries.map((entry) => (
           <td
             key={entry.id}
@@ -760,6 +881,25 @@ function SegmentalSection({
                   {trendText}
                 </span>
               </td>
+              {/* DEXA scan data cells */}
+              {bodyspecScans.map((scan) => {
+                const dexaValue = getDexaSegmentalValue(scan, field.key as string);
+                return (
+                  <td
+                    key={scan.id}
+                    className="px-3 py-1.5 text-center border-l border-amber-200 dark:border-amber-800/50 bg-amber-50/30 dark:bg-amber-900/10"
+                  >
+                    {dexaValue !== null ? (
+                      <span className="text-xs tabular-nums font-medium text-amber-700 dark:text-amber-300">
+                        {dexaValue.toFixed(1)}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-gray-300 dark:text-gray-600">—</span>
+                    )}
+                  </td>
+                );
+              })}
+              {/* BIA entry data cells */}
               {entries.map((entry, entryIdx) => {
                 const value = entry[field.key] as { lb: number; percent: number } | undefined;
                 const currentLb = value?.lb || 0;

@@ -5,7 +5,7 @@ This guide will walk you through setting up the Bodyspec DEXA scan integration f
 ## Overview
 
 The Bodyspec integration allows you to:
-- Connect your Bodyspec account using an API token
+- Connect your Bodyspec account using secure OAuth 2.0 authentication
 - Automatically sync your DEXA scan results
 - Compare BIA measurements with DEXA scans (the gold standard)
 - View side-by-side comparisons of body composition metrics
@@ -14,40 +14,42 @@ The Bodyspec integration allows you to:
 
 1. A Bodyspec account with DEXA scan data
 2. Supabase project configured
-3. Your Bodyspec API access token
+3. Your app deployed or running locally
 
 ## Step 1: Database Setup
 
-Run the SQL migration to create the required tables in your Supabase database:
+Run the SQL migrations to create the required tables in your Supabase database:
 
 1. Open your Supabase project dashboard
 2. Navigate to the SQL Editor
-3. Run the migration file located at: `supabase/migrations/001_create_bodyspec_tables.sql`
+3. Run the migration files in order:
+   - `supabase/migrations/001_create_bodyspec_tables.sql` - Creates base tables
+   - `supabase/migrations/002_add_oauth_tokens.sql` - Adds OAuth token fields
 
 This will create:
-- `bodyspec_connections` table - stores your Bodyspec API connection
+- `bodyspec_connections` table - stores your Bodyspec OAuth connection with tokens
 - `bodyspec_scans` table - stores synced DEXA scan data
 
-## Step 2: Get Your Bodyspec API Token
+## Step 2: Environment Variables
 
-1. Visit [Bodyspec MCP Setup](https://app.bodyspec.com/#mcp-setup)
-2. Log in to your Bodyspec account
-3. Navigate to the API settings or MCP configuration section
-4. Generate or copy your API access token (JWT)
-5. Keep this token secure - treat it like a password
-
-## Step 3: Environment Variables (Optional)
-
-For enhanced security with token encryption, add the following to your `.env.local`:
+Add the following to your `.env.local` file:
 
 ```env
-# Optional: Custom encryption key for Bodyspec tokens
+# Your app's public URL (used for OAuth callback)
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+
+# Optional: Custom Bodyspec OAuth client ID (defaults to public client)
+# NEXT_PUBLIC_BODYSPEC_CLIENT_ID=your-client-id
+
+# Optional: Custom encryption key for token storage
 BODYSPEC_ENCRYPTION_KEY=your-secure-random-key-here
 ```
 
-If not provided, a default key will be used (not recommended for production).
+For production deployment (e.g., Vercel), set `NEXT_PUBLIC_APP_URL` to your production URL.
 
-## Step 4: Connect Your Bodyspec Account
+## Step 3: Connect Your Bodyspec Account
+
+The app uses OAuth 2.0 with PKCE for secure authentication. No manual tokens needed!
 
 1. Start your Next.js development server:
    ```bash
@@ -58,17 +60,15 @@ If not provided, a default key will be used (not recommended for production).
 
 3. Click on the "Bodyspec DEXA Integration" section to expand it
 
-4. Click "Connect Bodyspec"
+4. Click **"Connect with Bodyspec"**
 
-5. Fill in the form:
-   - **Connection Name**: A friendly name (e.g., "My Bodyspec Account")
-   - **Access Token**: Paste your Bodyspec API token from Step 2
+5. You'll be redirected to Bodyspec's login page
 
-6. Click "Connect"
+6. Log in with your Bodyspec account credentials
 
-The app will validate your token and save the connection.
+7. After authorization, you'll be redirected back to your app with the connection established
 
-## Step 5: Sync Your DEXA Scans
+## Step 4: Sync Your DEXA Scans
 
 Once connected, you can sync your DEXA scans:
 
@@ -84,12 +84,20 @@ Once connected, you can sync your DEXA scans:
 The integration uses a smart sync strategy to minimize API calls:
 
 - **Never synced**: Syncs immediately
-- **Recent scan (< 7 days)**: Syncs daily
+- **Recent scan (<7 days)**: Syncs daily
 - **Medium age scan (7-30 days)**: Syncs every 3 days
 - **Old scan (30-90 days)**: Syncs weekly
 - **Very old scan (90+ days)**: Syncs monthly
 
 You can always manually trigger a sync regardless of the schedule.
+
+## Token Management
+
+The app automatically handles OAuth tokens:
+
+- **Access tokens** are used for API requests
+- **Refresh tokens** are stored securely and used to obtain new access tokens when they expire
+- **Automatic refresh**: The app will automatically refresh expired tokens before making API calls
 
 ## Viewing Your Data
 
@@ -112,14 +120,21 @@ Use DEXA scans as your reference point for accurate body composition, and BIA fo
 
 ## Troubleshooting
 
-### "Invalid or expired access token"
-- Your token may have expired or been revoked
-- Get a new token from Bodyspec and reconnect
+### "Authorization was denied"
+- You may have clicked "Deny" on the Bodyspec authorization page
+- Try connecting again and click "Allow" to grant access
 
-### "Failed to sync data"
-- Check your internet connection
-- Verify your Bodyspec account has completed scans
-- Check the browser console for detailed error messages
+### "Security validation failed"
+- Your browser session may have expired during authorization
+- Clear cookies and try again
+
+### "Session expired"
+- The OAuth flow took too long (>10 minutes)
+- Try connecting again promptly
+
+### "Failed to complete authorization"
+- There may be a temporary issue with Bodyspec's servers
+- Wait a few minutes and try again
 
 ### No scans appearing after sync
 - Ensure you have completed DEXA scans in your Bodyspec account
@@ -127,21 +142,26 @@ Use DEXA scans as your reference point for accurate body composition, and BIA fo
 - Scan data may take 1-2 days to become available after your appointment
 
 ### Connection shows "error" status
-- Try disconnecting and reconnecting with a fresh token
+- Try disconnecting and reconnecting
 - Check Supabase logs for detailed error information
 
 ## Security Notes
 
-1. **Token Storage**: Tokens are encrypted before storage in the database
-2. **API Routes**: All Bodyspec API calls go through Next.js API routes (never from the client)
-3. **Token Transmission**: Tokens are only sent during initial connection over HTTPS
-4. **Data Privacy**: All data is stored in your Supabase instance - you control your data
+1. **OAuth 2.0 + PKCE**: Uses industry-standard secure authentication with Proof Key for Code Exchange
+2. **Token Storage**: Access and refresh tokens are encrypted before storage in the database
+3. **No Passwords**: Your Bodyspec password is never shared with this app
+4. **Automatic Expiry**: Tokens expire and are automatically refreshed
+5. **Data Privacy**: All data is stored in your Supabase instance - you control your data
 
 ## API Endpoints
 
 The integration provides the following API endpoints:
 
-- `POST /api/bodyspec/connect` - Connect a new Bodyspec account
+### OAuth Endpoints
+- `GET /api/auth/bodyspec/authorize` - Initiates OAuth flow
+- `GET /api/auth/bodyspec/callback` - Handles OAuth callback
+
+### Data Endpoints
 - `POST /api/bodyspec/sync` - Sync scans from Bodyspec
 - `GET /api/bodyspec/scans` - Get stored scans
 - `GET /api/bodyspec/connections` - Get connections
@@ -196,6 +216,6 @@ For issues with:
 ## References
 
 - [Bodyspec API Documentation](https://app.bodyspec.com/docs)
-- [Bodyspec MCP Setup Guide](https://app.bodyspec.com/#mcp-setup)
+- [OAuth 2.0 with PKCE](https://oauth.net/2/pkce/)
 - [Understanding DEXA Scans](https://www.bodyspec.com/what-is-dxa)
 - [Interpreting DEXA Results](https://www.bodyspec.com/blog/post/interpreting_dexa_scan_results_tscore_zscore_and_body_composition)
