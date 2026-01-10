@@ -73,6 +73,11 @@ export default function BodyspecSyncButton({
       }
 
       onSyncComplete?.();
+
+      // Auto-hide success message after 3 seconds
+      setTimeout(() => {
+        setSyncResult(null);
+      }, 3000);
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -81,11 +86,11 @@ export default function BodyspecSyncButton({
   }, [connection.id, onSyncComplete]);
 
   return (
-    <div className={`flex items-center gap-3 ${className}`}>
+    <div className={`flex items-center gap-3 flex-row-reverse ${className}`}>
       <button
         onClick={handleSync}
         disabled={isSyncing}
-        className="px-3 py-1.5 text-sm rounded-md font-medium transition-colors bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+        className="px-3 py-1.5 text-sm rounded-md font-medium transition-colors bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
       >
         {isSyncing ? (
           <span className="flex items-center gap-2">
@@ -117,9 +122,11 @@ export default function BodyspecSyncButton({
         <span className="text-xs text-red-600 dark:text-red-400">{error}</span>
       )}
 
-      {/* Success message */}
+      {/* Success message - positioned to the left of button */}
       {syncResult && (
-        <span className="text-xs text-green-600 dark:text-green-400">{syncResult}</span>
+        <span className="text-xs text-green-700 dark:text-green-500 font-medium animate-fade-out">
+          {syncResult}
+        </span>
       )}
     </div>
   );

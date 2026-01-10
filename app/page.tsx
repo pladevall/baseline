@@ -49,27 +49,58 @@ export default function Home() {
     });
   }, []);
 
+  const showOnlyLatest = useCallback(() => {
+    if (bodyspecScans.length === 0) return;
+    const sortedByDate = [...bodyspecScans].sort((a, b) =>
+      new Date(b.scanDate).getTime() - new Date(a.scanDate).getTime()
+    );
+    const toHide = sortedByDate.slice(1).map(s => s.id);
+    setHiddenScans(new Set(toHide));
+    localStorage.setItem('hiddenBodyspecScans', JSON.stringify(toHide));
+  }, [bodyspecScans]);
+
   const visibleScans = bodyspecScans.filter(scan => !hiddenScans.has(scan.id));
 
-  // When scans load, if no localStorage exists, auto-hide all but the most recent scan
+  // When scans load, if no localStorage exists OR if it's empty, auto-hide all but the most recent scan
   useEffect(() => {
-    if (bodyspecScans.length > 0 && !localStorage.getItem('hiddenBodyspecScans')) {
-      const sortedByDate = [...bodyspecScans].sort((a, b) =>
-        new Date(b.scanDate).getTime() - new Date(a.scanDate).getTime()
-      );
-      const toHide = sortedByDate.slice(1).map(s => s.id);
-      setHiddenScans(new Set(toHide));
-      localStorage.setItem('hiddenBodyspecScans', JSON.stringify(toHide));
+    if (bodyspecScans.length > 0) {
+      const saved = localStorage.getItem('hiddenBodyspecScans');
+
+      // Only auto-hide if there's no saved preference at all
+      // (not just empty array - that means user explicitly showed all)
+      if (saved === null) {
+        const sortedByDate = [...bodyspecScans].sort((a, b) =>
+          new Date(b.scanDate).getTime() - new Date(a.scanDate).getTime()
+        );
+        const toHide = sortedByDate.slice(1).map(s => s.id);
+        setHiddenScans(new Set(toHide));
+        localStorage.setItem('hiddenBodyspecScans', JSON.stringify(toHide));
+      }
     }
   }, [bodyspecScans]);
 
-  const loadBodyspecData = useCallback(async () => {
+  const loadBodyspecData = useCallback(async (options?: { autoSync?: boolean }) => {
     try {
       // Load connections
       const connectionsRes = await fetch('/api/bodyspec/connections');
+      let connections: any[] = [];
       if (connectionsRes.ok) {
         const connectionsData = await connectionsRes.json();
-        setBodyspecConnections(connectionsData.connections || []);
+        connections = connectionsData.connections || [];
+        setBodyspecConnections(connections);
+      }
+
+      // If autoSync is requested and we have a connection, trigger sync first
+      if (options?.autoSync && connections.length > 0) {
+        try {
+          await fetch('/api/bodyspec/sync', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ connectionId: connections[0].id }),
+          });
+        } catch (syncErr) {
+          console.error('Auto-sync failed:', syncErr);
+        }
       }
 
       // Load scans
@@ -337,7 +368,7 @@ export default function Home() {
                 <div className="flex-1">
                   <BodyspecConnect
                     connections={bodyspecConnections}
-                    onConnectionChange={loadBodyspecData}
+                    onConnectionChange={() => loadBodyspecData({ autoSync: true })}
                   />
                 </div>
 
@@ -349,7 +380,7 @@ export default function Home() {
                     />
                     <button
                       onClick={() => handleDisconnect(bodyspecConnections[0].id)}
-                      className="text-sm px-3 py-1.5 text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors border border-transparent hover:border-red-200 dark:hover:border-red-800"
+                      className="text-sm px-3 py-1.5 text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors border border-transparent hover:border-red-200 dark:hover:border-red-800 cursor-pointer"
                     >
                       Disconnect
                     </button>
@@ -370,7 +401,7 @@ export default function Home() {
                         <div className="flex items-center gap-2">
                           <button
                             onClick={() => toggleScanVisibility(scan.id)}
-                            className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                            className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors cursor-pointer"
                             title={isHidden ? 'Show in table' : 'Hide from table'}
                           >
                             {isHidden ? (
@@ -394,6 +425,28 @@ export default function Home() {
                       </div>
                     );
                   })}
+                  {bodyspecScans.length > 1 && (
+                    <div className="flex items-center justify-between pt-2 mt-1 border-t border-gray-100 dark:border-gray-800">
+                      <span className="text-xs text-gray-500 dark:text-gray-400">
+                        {visibleScans.length} of {bodyspecScans.length} shown
+                      </span>
+                      <button
+                        onClick={() => {
+                          if (visibleScans.length === 1) {
+                            // Show all
+                            setHiddenScans(new Set());
+                            localStorage.setItem('hiddenBodyspecScans', JSON.stringify([]));
+                          } else {
+                            // Only show latest
+                            showOnlyLatest();
+                          }
+                        }}
+                        className="text-xs text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+                      >
+                        {visibleScans.length === 1 ? 'Show all' : 'Only show latest'}
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

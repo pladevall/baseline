@@ -9,8 +9,6 @@ interface BodyspecConnectProps {
 }
 
 export default function BodyspecConnect({ connections, onConnectionChange }: BodyspecConnectProps) {
-  const [showNameInput, setShowNameInput] = useState(false);
-  const [connectionName, setConnectionName] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
@@ -36,15 +34,8 @@ export default function BodyspecConnect({ connections, onConnectionChange }: Bod
     }
   }, [onConnectionChange]);
 
-  const handleConnectClick = () => {
-    setShowNameInput(true);
-    setConnectionName('Bodyspec');
-  };
-
-  const handleStartOAuth = () => {
-    // Redirect to OAuth authorization endpoint with optional name
-    const name = connectionName.trim() || 'Bodyspec';
-    window.location.href = `/api/auth/bodyspec/authorize?name=${encodeURIComponent(name)}`;
+  const handleConnect = () => {
+    window.location.href = `/api/auth/bodyspec/authorize?name=Bodyspec`;
   };
 
   // If connected, show nothing (parent handles the connected state UI)
@@ -72,60 +63,18 @@ export default function BodyspecConnect({ connections, onConnectionChange }: Bod
         </div>
       )}
 
-      {!showNameInput ? (
-        <div className="text-center py-4">
-          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-            Connect your Bodyspec account to sync DEXA scans.
-          </p>
-          <button
-            onClick={handleConnectClick}
-            className="px-4 py-2 bg-amber-600 text-white rounded-md hover:bg-amber-700 transition-colors flex items-center gap-2 mx-auto"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-            </svg>
-            Connect with Bodyspec
-          </button>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          <div>
-            <label htmlFor="connectionName" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Connection Name (optional)
-            </label>
-            <input
-              type="text"
-              id="connectionName"
-              value={connectionName}
-              onChange={(e) => setConnectionName(e.target.value)}
-              placeholder="Bodyspec"
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-            />
-          </div>
-
-          <div className="flex gap-2">
-            <button
-              onClick={handleStartOAuth}
-              className="px-4 py-2 bg-amber-600 text-white rounded-md hover:bg-amber-700 transition-colors flex items-center gap-2"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-              </svg>
-              Continue to Bodyspec
-            </button>
-            <button
-              onClick={() => {
-                setShowNameInput(false);
-                setConnectionName('');
-                setError(null);
-              }}
-              className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
+      <div className="text-center py-4">
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+          Connect your Bodyspec account to sync DEXA scans.
+        </p>
+        <button
+          onClick={handleConnect}
+          className="px-3 py-1.5 text-sm rounded-md font-medium transition-colors bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600 cursor-pointer"
+        >
+          Connect
+        </button>
+      </div>
     </div>
   );
 }
+
