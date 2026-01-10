@@ -339,11 +339,6 @@ export default function Home() {
                     connections={bodyspecConnections}
                     onConnectionChange={loadBodyspecData}
                   />
-                  {bodyspecConnections.length > 0 && (
-                    <div className="text-sm text-green-700 dark:text-green-400 font-medium">
-                      Connected as {bodyspecConnections[0].name || 'Bodyspec User'}
-                    </div>
-                  )}
                 </div>
 
                 {bodyspecConnections.length > 0 && (

@@ -4,8 +4,9 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createBodyspecClient } from '@/lib/bodyspec-client';
-import { getConnection, updateSyncStatus, saveScans } from '@/lib/supabase-bodyspec';
+import { createBodyspecClient, BodyspecAPIError } from '@/lib/bodyspec-client';
+import { getConnection, updateSyncStatus, saveScans, updateConnectionTokens } from '@/lib/supabase-bodyspec';
+import { refreshAccessToken } from '@/lib/oauth-config';
 
 export async function POST(request: NextRequest) {
   let connectionId: string | undefined;
@@ -35,14 +36,54 @@ export async function POST(request: NextRequest) {
     // Update status to pending
     await updateSyncStatus(connectionId, 'pending');
 
-    // Create Bodyspec API client
-    const client = createBodyspecClient(connection.accessToken);
+    let accessToken = connection.accessToken;
 
-    // Fetch scans from Bodyspec
-    const appointments = await client.fetchAllScans({
-      startDate,
-      endDate,
-    });
+    // Helper function to perform the sync with a given token
+    const performSync = async (token: string) => {
+      const client = createBodyspecClient(token);
+      return client.fetchAllScans({ startDate, endDate });
+    };
+
+    let appointments;
+
+    try {
+      // Try with the current token first
+      appointments = await performSync(accessToken);
+    } catch (error) {
+      const apiError = error as BodyspecAPIError;
+
+      // If unauthorized and we have a refresh token, try to refresh
+      if ((apiError.status === 401 || apiError.status === 403) && connection.refreshToken) {
+        console.log('Access token expired, attempting refresh...');
+
+        try {
+          const tokenResponse = await refreshAccessToken(connection.refreshToken);
+
+          // Calculate new expiration time
+          const expiresAt = new Date();
+          expiresAt.setSeconds(expiresAt.getSeconds() + tokenResponse.expires_in);
+
+          // Update stored tokens
+          await updateConnectionTokens(connectionId, {
+            accessToken: tokenResponse.access_token,
+            refreshToken: tokenResponse.refresh_token || connection.refreshToken,
+            tokenExpiresAt: expiresAt.toISOString(),
+          });
+
+          // Retry with the new token
+          accessToken = tokenResponse.access_token;
+          appointments = await performSync(accessToken);
+
+          console.log('Token refreshed successfully, sync continuing...');
+        } catch (refreshError) {
+          console.error('Token refresh failed:', refreshError);
+          throw new Error('Session expired. Please reconnect your Bodyspec account.');
+        }
+      } else {
+        // Re-throw if not a token issue or no refresh token
+        throw error;
+      }
+    }
 
     // Save scans to database
     const savedScans = await saveScans(connectionId, appointments);
@@ -69,8 +110,12 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    const errorMessage = error instanceof Error
+      ? error.message
+      : 'Failed to sync data from Bodyspec. Please try again.';
+
     return NextResponse.json(
-      { error: 'Failed to sync data from Bodyspec. Please try again.' },
+      { error: errorMessage },
       { status: 500 }
     );
   }
