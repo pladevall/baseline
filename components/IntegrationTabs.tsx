@@ -167,6 +167,7 @@ function BodyspecContent({
 }: BodyspecContentProps) {
     const [error, setError] = useStateBS<string | null>(null);
     const [success, setSuccess] = useStateBS<string | null>(null);
+    const [confirmDisconnect, setConfirmDisconnect] = useStateBS<string | null>(null);
 
     // Check for OAuth callback messages in URL
     useEffectBS(() => {
@@ -190,11 +191,15 @@ function BodyspecContent({
         window.location.href = `/api/auth/bodyspec/authorize?name=Bodyspec`;
     };
 
-    const handleDisconnect = (connectionId: string) => {
-        if (!confirm('Are you sure you want to disconnect? This will delete all synced scans.')) {
-            return;
+    const handleDisconnectRequest = (connectionId: string) => {
+        if (confirmDisconnect === connectionId) {
+            onDisconnect(connectionId);
+            setConfirmDisconnect(null);
+        } else {
+            setConfirmDisconnect(connectionId);
+            // Reset confirmation after 3 seconds
+            setTimeout(() => setConfirmDisconnect(null), 3000);
         }
-        onDisconnect(connectionId);
     };
 
     // Messages
@@ -233,10 +238,13 @@ function BodyspecContent({
                             onSyncComplete={onSync}
                         />
                         <button
-                            onClick={() => handleDisconnect(connections[0].id)}
-                            className="text-sm px-3 py-1.5 text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors border border-transparent hover:border-red-200 dark:hover:border-red-800 cursor-pointer"
+                            onClick={() => handleDisconnectRequest(connections[0].id)}
+                            className={`text-sm px-3 py-1.5 rounded-md transition-colors border border-transparent cursor-pointer ${confirmDisconnect === connections[0].id
+                                ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800 font-medium'
+                                : 'text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 hover:border-red-200 dark:hover:border-red-800'
+                                }`}
                         >
-                            Disconnect
+                            {confirmDisconnect === connections[0].id ? 'Click to Confirm' : 'Disconnect'}
                         </button>
                     </div>
                 </div>
@@ -337,6 +345,7 @@ import WorkoutSyncButton from './WorkoutSyncButton';
 function StravaContent({ connections, activities, onConnectionChange, onSync }: StravaContentProps) {
     const [error, setError] = useStateST<string | null>(null);
     const [success, setSuccess] = useStateST<string | null>(null);
+    const [confirmDisconnect, setConfirmDisconnect] = useStateST<string | null>(null);
 
     useEffectST(() => {
         const params = new URLSearchParams(window.location.search);
@@ -359,19 +368,23 @@ function StravaContent({ connections, activities, onConnectionChange, onSync }: 
         window.location.href = '/api/auth/strava/authorize';
     };
 
-    const handleDisconnect = async (connectionId: string) => {
-        if (!confirm('Are you sure you want to disconnect from Strava?')) {
-            return;
-        }
-        try {
-            const response = await fetch(`/api/strava/connections?id=${connectionId}`, {
-                method: 'DELETE',
-            });
-            if (!response.ok) throw new Error('Failed to disconnect');
-            setSuccess('Disconnected from Strava');
-            onConnectionChange();
-        } catch (err) {
-            setError('Failed to disconnect from Strava');
+    const handleDisconnectRequest = async (connectionId: string) => {
+        if (confirmDisconnect === connectionId) {
+            try {
+                const response = await fetch(`/api/strava/connections?id=${connectionId}`, {
+                    method: 'DELETE',
+                });
+                if (!response.ok) throw new Error('Failed to disconnect');
+                setSuccess('Disconnected from Strava');
+                onConnectionChange();
+            } catch (err) {
+                setError('Failed to disconnect from Strava');
+            } finally {
+                setConfirmDisconnect(null);
+            }
+        } else {
+            setConfirmDisconnect(connectionId);
+            setTimeout(() => setConfirmDisconnect(null), 3000);
         }
     };
 
@@ -409,10 +422,13 @@ function StravaContent({ connections, activities, onConnectionChange, onSync }: 
                             onSyncComplete={onSync}
                         />
                         <button
-                            onClick={() => handleDisconnect(connection.id)}
-                            className="text-sm px-3 py-1.5 text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors border border-transparent hover:border-red-200 dark:hover:border-red-800 cursor-pointer"
+                            onClick={() => handleDisconnectRequest(connection.id)}
+                            className={`text-sm px-3 py-1.5 rounded-md transition-colors border border-transparent cursor-pointer ${confirmDisconnect === connection.id
+                                ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800 font-medium'
+                                : 'text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 hover:border-red-200 dark:hover:border-red-800'
+                                }`}
                         >
-                            Disconnect
+                            {confirmDisconnect === connection.id ? 'Click to Confirm' : 'Disconnect'}
                         </button>
                     </div>
                 </div>
@@ -460,6 +476,7 @@ function HevyContent({ connections, workouts, onConnectionChange, onSync }: Hevy
     const [error, setError] = useStateHV<string | null>(null);
     const [success, setSuccess] = useStateHV<string | null>(null);
     const [showForm, setShowForm] = useStateHV(false);
+    const [confirmDisconnect, setConfirmDisconnect] = useStateHV<string | null>(null);
 
     const handleConnect = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -497,19 +514,23 @@ function HevyContent({ connections, workouts, onConnectionChange, onSync }: Hevy
         }
     };
 
-    const handleDisconnect = async (connectionId: string) => {
-        if (!confirm('Are you sure you want to disconnect from Hevy?')) {
-            return;
-        }
-        try {
-            const response = await fetch(`/api/hevy/connections?id=${connectionId}`, {
-                method: 'DELETE',
-            });
-            if (!response.ok) throw new Error('Failed to disconnect');
-            setSuccess('Disconnected from Hevy');
-            onConnectionChange();
-        } catch (err) {
-            setError('Failed to disconnect from Hevy');
+    const handleDisconnectRequest = async (connectionId: string) => {
+        if (confirmDisconnect === connectionId) {
+            try {
+                const response = await fetch(`/api/hevy/connections?id=${connectionId}`, {
+                    method: 'DELETE',
+                });
+                if (!response.ok) throw new Error('Failed to disconnect');
+                setSuccess('Disconnected from Hevy');
+                onConnectionChange();
+            } catch (err) {
+                setError('Failed to disconnect from Hevy');
+            } finally {
+                setConfirmDisconnect(null);
+            }
+        } else {
+            setConfirmDisconnect(connectionId);
+            setTimeout(() => setConfirmDisconnect(null), 3000);
         }
     };
 
@@ -547,10 +568,13 @@ function HevyContent({ connections, workouts, onConnectionChange, onSync }: Hevy
                             onSyncComplete={onSync}
                         />
                         <button
-                            onClick={() => handleDisconnect(connection.id)}
-                            className="text-sm px-3 py-1.5 text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors border border-transparent hover:border-red-200 dark:hover:border-red-800 cursor-pointer"
+                            onClick={() => handleDisconnectRequest(connection.id)}
+                            className={`text-sm px-3 py-1.5 rounded-md transition-colors border border-transparent cursor-pointer ${confirmDisconnect === connection.id
+                                ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800 font-medium'
+                                : 'text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 hover:border-red-200 dark:hover:border-red-800'
+                                }`}
                         >
-                            Disconnect
+                            {confirmDisconnect === connection.id ? 'Click to Confirm' : 'Disconnect'}
                         </button>
                     </div>
                 </div>

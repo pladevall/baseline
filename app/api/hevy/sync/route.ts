@@ -42,11 +42,22 @@ export async function POST(request: NextRequest) {
             // Always fetch ALL workouts - the upsert will update existing records
             // This ensures we always have the latest data including sets/reps/bodyparts
             const hevyWorkouts = await client.getAllWorkouts();
+            console.log(`[Hevy Sync] Fetched ${hevyWorkouts.length} workouts from API`);
+
+            // Debug first workout raw data
+            if (hevyWorkouts.length > 0) {
+                console.log('[Hevy Sync] First raw workout exercises:', JSON.stringify(hevyWorkouts[0].exercises[0], null, 2));
+            }
 
             // Convert workouts
             const convertedWorkouts = await Promise.all(
                 hevyWorkouts.map(w => convertHevyWorkout(w, client))
             );
+
+            // Debug first converted workout
+            if (convertedWorkouts.length > 0) {
+                console.log('[Hevy Sync] First converted workout:', JSON.stringify(convertedWorkouts[0], null, 2));
+            }
 
             // Save to database (upsert updates existing records)
             const savedWorkouts = await saveLiftingWorkouts(connectionId, convertedWorkouts);

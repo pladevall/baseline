@@ -5,6 +5,7 @@ import { BIAEntry, BodyspecScan, BodyspecScanData, METRIC_DEFINITIONS, CATEGORY_
 import { Goal } from '@/lib/supabase';
 import Tooltip from './Tooltip';
 import GoalEditor from './GoalEditor';
+import { TimeSeriesTable, TimeSeriesRow, SectionHeaderRow } from './TimeSeriesTable';
 
 interface DataTableProps {
   entries: BIAEntry[];
@@ -450,13 +451,13 @@ export default function DataTable({ entries, goals, bodyspecScans = [], onDelete
   }
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b border-gray-200 dark:border-gray-800">
-            <th className="sticky left-0 z-10 bg-white dark:bg-gray-900 px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[180px]">
-              Metric
-            </th>
+    <>
+      <TimeSeriesTable
+        headerLabel="Metric"
+        columns={dataColumns}
+        stickyColumnWidth="min-w-[180px]"
+        headerFixedContent={
+          <>
             <th className="px-2 py-2 text-center min-w-[60px] border-l border-gray-100 dark:border-gray-800/50 bg-blue-50/50 dark:bg-blue-900/20">
               <span className="text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase">Goal</span>
             </th>
@@ -482,133 +483,131 @@ export default function DataTable({ entries, goals, bodyspecScans = [], onDelete
                 </div>
               </div>
             </th>
-            {/* Combined Date-Sorted Columns (BIA + DEXA interleaved by date, newest first) */}
-            {dataColumns.map((col) => (
-              col.type === 'dexa' ? (
-                <th
-                  key={col.data.id}
-                  className="px-3 py-2 text-center min-w-[100px] border-l border-amber-200 dark:border-amber-800/50 bg-amber-50/50 dark:bg-amber-900/20"
+          </>
+        }
+        renderColumnHeader={(col) => (
+          col.type === 'dexa' ? (
+            <th
+              key={col.data.id}
+              className="px-3 py-2 text-center min-w-[100px] border-l border-amber-200 dark:border-amber-800/50 bg-amber-50/50 dark:bg-amber-900/20"
+            >
+              <div className="flex flex-col items-center gap-0.5">
+                <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-700 dark:text-amber-300">
+                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  {formatDate(col.data.scanDate)}
+                </span>
+                <span className="text-[10px] text-amber-600 dark:text-amber-400 font-medium">DEXA</span>
+              </div>
+            </th>
+          ) : (
+            <th
+              key={col.data.id}
+              className="px-3 py-2 text-center min-w-[100px] border-l border-gray-100 dark:border-gray-800/50"
+            >
+              <div className="flex flex-col items-center gap-0.5">
+                <span className="text-xs font-medium text-gray-900 dark:text-gray-100">
+                  {formatDate(col.data.date)}
+                </span>
+                <button
+                  onClick={() => onDelete(col.data.id)}
+                  className="text-[10px] text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
                 >
-                  <div className="flex flex-col items-center gap-0.5">
-                    <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-700 dark:text-amber-300">
-                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      {formatDate(col.data.scanDate)}
-                    </span>
-                    <span className="text-[10px] text-amber-600 dark:text-amber-400 font-medium">DEXA</span>
-                  </div>
-                </th>
-              ) : (
-                <th
-                  key={col.data.id}
-                  className="px-3 py-2 text-center min-w-[100px] border-l border-gray-100 dark:border-gray-800/50"
-                >
-                  <div className="flex flex-col items-center gap-0.5">
-                    <span className="text-xs font-medium text-gray-900 dark:text-gray-100">
-                      {formatDate(col.data.date)}
-                    </span>
-                    <button
-                      onClick={() => onDelete(col.data.id)}
-                      className="text-[10px] text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
-                    >
-                      Remove
-                    </button>
-                  </div>
-                </th>
-              )
-            ))}
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-gray-100 dark:divide-gray-800/50">
-          {/* Header & Core */}
-          {(['header', 'core'] as const).map((category) => {
-            const metricsInCategory = METRIC_DEFINITIONS.filter(
-              (m) => m.category === category
-            );
-            return (
-              <CategorySection
-                key={category}
-                category={category}
-                categoryLabel={CATEGORY_LABELS[category]}
-                metrics={metricsInCategory}
-                entries={entries}
-                bodyspecScans={bodyspecScans}
-                comparisonEntry={comparisonEntry}
-                isExpanded={expandedCategories.has(category)}
-                onToggle={() => toggleCategory(category)}
-                goalsMap={goalsMap}
-                onEditGoal={setEditingGoal}
-                daysBetween={daysBetween}
-              />
-            );
-          })}
+                  Remove
+                </button>
+              </div>
+            </th>
+          )
+        )}
+      >
+        {/* Header & Core */}
+        {(['header', 'core'] as const).map((category) => {
+          const metricsInCategory = METRIC_DEFINITIONS.filter(
+            (m) => m.category === category
+          );
+          return (
+            <CategorySection
+              key={category}
+              category={category}
+              categoryLabel={CATEGORY_LABELS[category]}
+              metrics={metricsInCategory}
+              entries={entries}
+              bodyspecScans={bodyspecScans}
+              comparisonEntry={comparisonEntry}
+              isExpanded={expandedCategories.has(category)}
+              onToggle={() => toggleCategory(category)}
+              goalsMap={goalsMap}
+              onEditGoal={setEditingGoal}
+              daysBetween={daysBetween}
+            />
+          );
+        })}
 
-          {/* Segmental sections right after core */}
-          <SegmentalSection
-            title="Segmental Muscle"
-            isExpanded={expandedCategories.has('segmental-muscle')}
-            onToggle={() => toggleCategory('segmental-muscle')}
-            entries={entries}
-            bodyspecScans={bodyspecScans}
-            comparisonEntry={comparisonEntry}
-            fields={[
-              { key: 'muscleLeftArm', label: 'Left Arm' },
-              { key: 'muscleRightArm', label: 'Right Arm' },
-              { key: 'muscleTrunk', label: 'Trunk' },
-              { key: 'muscleLeftLeg', label: 'Left Leg' },
-              { key: 'muscleRightLeg', label: 'Right Leg' },
-            ]}
-            higherIsBetter={true}
-            goalsMap={goalsMap}
-            onEditGoal={setEditingGoal}
-            daysBetween={daysBetween}
-          />
+        {/* Segmental sections right after core */}
+        <SegmentalSection
+          title="Segmental Muscle"
+          isExpanded={expandedCategories.has('segmental-muscle')}
+          onToggle={() => toggleCategory('segmental-muscle')}
+          entries={entries}
+          bodyspecScans={bodyspecScans}
+          comparisonEntry={comparisonEntry}
+          fields={[
+            { key: 'muscleLeftArm', label: 'Left Arm' },
+            { key: 'muscleRightArm', label: 'Right Arm' },
+            { key: 'muscleTrunk', label: 'Trunk' },
+            { key: 'muscleLeftLeg', label: 'Left Leg' },
+            { key: 'muscleRightLeg', label: 'Right Leg' },
+          ]}
+          higherIsBetter={true}
+          goalsMap={goalsMap}
+          onEditGoal={setEditingGoal}
+          daysBetween={daysBetween}
+        />
 
-          <SegmentalSection
-            title="Segmental Fat"
-            isExpanded={expandedCategories.has('segmental-fat')}
-            onToggle={() => toggleCategory('segmental-fat')}
-            entries={entries}
-            bodyspecScans={bodyspecScans}
-            comparisonEntry={comparisonEntry}
-            fields={[
-              { key: 'fatLeftArm', label: 'Left Arm' },
-              { key: 'fatRightArm', label: 'Right Arm' },
-              { key: 'fatTrunk', label: 'Trunk' },
-              { key: 'fatLeftLeg', label: 'Left Leg' },
-              { key: 'fatRightLeg', label: 'Right Leg' },
-            ]}
-            higherIsBetter={false}
-            goalsMap={goalsMap}
-            onEditGoal={setEditingGoal}
-            daysBetween={daysBetween}
-          />
+        <SegmentalSection
+          title="Segmental Fat"
+          isExpanded={expandedCategories.has('segmental-fat')}
+          onToggle={() => toggleCategory('segmental-fat')}
+          entries={entries}
+          bodyspecScans={bodyspecScans}
+          comparisonEntry={comparisonEntry}
+          fields={[
+            { key: 'fatLeftArm', label: 'Left Arm' },
+            { key: 'fatRightArm', label: 'Right Arm' },
+            { key: 'fatTrunk', label: 'Trunk' },
+            { key: 'fatLeftLeg', label: 'Left Leg' },
+            { key: 'fatRightLeg', label: 'Right Leg' },
+          ]}
+          higherIsBetter={false}
+          goalsMap={goalsMap}
+          onEditGoal={setEditingGoal}
+          daysBetween={daysBetween}
+        />
 
-          {/* Remaining sections */}
-          {(['composition', 'additional', 'recommendations'] as const).map((category) => {
-            const metricsInCategory = METRIC_DEFINITIONS.filter(
-              (m) => m.category === category
-            );
-            return (
-              <CategorySection
-                key={category}
-                category={category}
-                categoryLabel={CATEGORY_LABELS[category]}
-                metrics={metricsInCategory}
-                entries={entries}
-                bodyspecScans={bodyspecScans}
-                comparisonEntry={comparisonEntry}
-                isExpanded={expandedCategories.has(category)}
-                onToggle={() => toggleCategory(category)}
-                goalsMap={goalsMap}
-                onEditGoal={setEditingGoal}
-                daysBetween={daysBetween}
-              />
-            );
-          })}
-        </tbody>
-      </table>
+        {/* Remaining sections */}
+        {(['composition', 'additional', 'recommendations'] as const).map((category) => {
+          const metricsInCategory = METRIC_DEFINITIONS.filter(
+            (m) => m.category === category
+          );
+          return (
+            <CategorySection
+              key={category}
+              category={category}
+              categoryLabel={CATEGORY_LABELS[category]}
+              metrics={metricsInCategory}
+              entries={entries}
+              bodyspecScans={bodyspecScans}
+              comparisonEntry={comparisonEntry}
+              isExpanded={expandedCategories.has(category)}
+              onToggle={() => toggleCategory(category)}
+              goalsMap={goalsMap}
+              onEditGoal={setEditingGoal}
+              daysBetween={daysBetween}
+            />
+          );
+        })}
+      </TimeSeriesTable>
 
       {editingGoal && (
         <GoalEditor
@@ -620,7 +619,7 @@ export default function DataTable({ entries, goals, bodyspecScans = [], onDelete
           onClose={() => setEditingGoal(null)}
         />
       )}
-    </div>
+    </>
   );
 }
 
@@ -665,39 +664,14 @@ function CategorySection({
 
   return (
     <>
-      <tr
-        className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
-        onClick={onToggle}
-      >
-        <td
-          className="sticky left-0 z-10 bg-gray-50 dark:bg-gray-900/50 px-4 py-2 text-xs font-medium text-gray-600 dark:text-gray-300 min-w-[180px]"
-        >
-          <span className="inline-flex items-center gap-1.5">
-            <svg
-              className={`w-3 h-3 text-gray-400 transition-transform ${isExpanded ? 'rotate-90' : ''}`}
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-            {categoryLabel}
-          </span>
-        </td>
-        <td className="bg-gray-50 dark:bg-gray-900/50 border-l border-gray-100 dark:border-gray-800/50" />
-        <td className="bg-gray-50 dark:bg-gray-900/50 border-l border-gray-100 dark:border-gray-800/50" />
-        <td className="bg-gray-50 dark:bg-gray-900/50 border-l border-gray-100 dark:border-gray-800/50" />
-        {/* Combined cells matching header order */}
-        {dataColumns.map((col) => (
-          <td
-            key={col.type === 'dexa' ? col.data.id : col.data.id}
-            className={col.type === 'dexa'
-              ? "bg-amber-50/30 dark:bg-amber-900/10 border-l border-amber-200 dark:border-amber-800/50"
-              : "bg-gray-50 dark:bg-gray-900/50 border-l border-gray-100 dark:border-gray-800/50"
-            }
-          />
-        ))}
-      </tr>
+      <SectionHeaderRow
+        label={categoryLabel}
+        color="gray"
+        isExpanded={isExpanded}
+        onToggle={onToggle}
+        columnCount={dataColumns.length}
+        fixedCellsCount={3}
+      />
       {isExpanded &&
         metrics.flatMap((metric) => {
           // Calculate trend for this metric
@@ -729,11 +703,9 @@ function CategorySection({
           );
 
           const metricRow = (
-            <tr
+            <TimeSeriesRow
               key={metric.key}
-              className="hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors"
-            >
-              <td className="sticky left-0 z-10 bg-white dark:bg-gray-900 px-4 py-1.5 text-gray-600 dark:text-gray-300 min-w-[180px]">
+              label={
                 <span className="text-xs inline-flex items-center gap-1">
                   {metric.label}
                   {metric.normalRange && (
@@ -744,68 +716,72 @@ function CategorySection({
                     </Tooltip>
                   )}
                 </span>
-              </td>
-              <td
-                className={`px-2 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50 bg-blue-50/30 dark:bg-blue-900/10 ${isGoalEligible ? 'cursor-pointer hover:bg-blue-100/50 dark:hover:bg-blue-900/30' : ''}`}
-                onClick={isGoalEligible ? () => onEditGoal({ metricKey: metric.key as string, label: metric.label }) : undefined}
-              >
-                {goalValue && latestValue ? (
-                  <Tooltip content={formatGapTooltip(latestValue, goalValue, metric.higherIsBetter ?? true, metric.unit)}>
-                    <span className={`text-xs tabular-nums font-medium cursor-help ${goalColor}`}>
-                      {goalValue.toFixed(1)}
+              }
+              fixedContent={
+                <>
+                  <td
+                    className={`px-2 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50 bg-blue-50/30 dark:bg-blue-900/10 ${isGoalEligible ? 'cursor-pointer hover:bg-blue-100/50 dark:hover:bg-blue-900/30' : ''}`}
+                    onClick={isGoalEligible ? () => onEditGoal({ metricKey: metric.key as string, label: metric.label }) : undefined}
+                  >
+                    {goalValue && latestValue ? (
+                      <Tooltip content={formatGapTooltip(latestValue, goalValue, metric.higherIsBetter ?? true, metric.unit)}>
+                        <span className={`text-xs tabular-nums font-medium cursor-help ${goalColor}`}>
+                          {goalValue.toFixed(1)}
+                        </span>
+                      </Tooltip>
+                    ) : goalValue ? (
+                      <span className={`text-xs tabular-nums font-medium ${goalColor}`}>
+                        {goalValue.toFixed(1)}
+                      </span>
+                    ) : isGoalEligible ? (
+                      <span className="text-xs text-gray-300 dark:text-gray-600">+</span>
+                    ) : (
+                      <span className="text-xs text-gray-300 dark:text-gray-700">—</span>
+                    )}
+                  </td>
+                  <td className="px-2 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50 bg-blue-50/20 dark:bg-blue-900/5">
+                    {forecast ? (
+                      <Tooltip content={
+                        metric.key === 'bodyFatPercentage' && goalValue ? (
+                          (() => {
+                            const weightProjection = calculateWeightAtGoalBF(latestEntry, comparisonEntry, goalValue);
+                            return (
+                              <div className="text-left">
+                                <div className="font-medium">{forecast.dateText}</div>
+                                {weightProjection && (
+                                  <>
+                                    <div className="border-t border-gray-600 mt-1 pt-1">
+                                      <div className="font-medium">At {goalValue}% Body Fat:</div>
+                                      <div>Est. Weight: {weightProjection.estimatedWeight.toFixed(1)} lb</div>
+                                      <div className="text-[10px] opacity-80 mt-0.5">
+                                        Lean: {weightProjection.leanMassChange >= 0 ? '+' : ''}{weightProjection.leanMassChange.toFixed(1)} lb projected
+                                      </div>
+                                    </div>
+                                  </>
+                                )}
+                              </div>
+                            );
+                          })()
+                        ) : forecast.dateText
+                      }>
+                        <span className={`text-xs tabular-nums font-medium cursor-help ${forecast.isMet ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-600 dark:text-gray-300'}`}>
+                          {forecast.timeText}
+                        </span>
+                      </Tooltip>
+                    ) : goalValue ? (
+                      <span className="text-xs text-gray-400">—</span>
+                    ) : (
+                      <span className="text-xs text-gray-300 dark:text-gray-700">—</span>
+                    )}
+                  </td>
+                  <td className="px-2 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50 bg-gray-50/50 dark:bg-gray-800/30">
+                    <span className={`text-xs tabular-nums font-medium ${trendColor}`}>
+                      {trendText}
                     </span>
-                  </Tooltip>
-                ) : goalValue ? (
-                  <span className={`text-xs tabular-nums font-medium ${goalColor}`}>
-                    {goalValue.toFixed(1)}
-                  </span>
-                ) : isGoalEligible ? (
-                  <span className="text-xs text-gray-300 dark:text-gray-600">+</span>
-                ) : (
-                  <span className="text-xs text-gray-300 dark:text-gray-700">—</span>
-                )}
-              </td>
-              <td className="px-2 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50 bg-blue-50/20 dark:bg-blue-900/5">
-                {forecast ? (
-                  <Tooltip content={
-                    metric.key === 'bodyFatPercentage' && goalValue ? (
-                      (() => {
-                        const weightProjection = calculateWeightAtGoalBF(latestEntry, comparisonEntry, goalValue);
-                        return (
-                          <div className="text-left">
-                            <div className="font-medium">{forecast.dateText}</div>
-                            {weightProjection && (
-                              <>
-                                <div className="border-t border-gray-600 mt-1 pt-1">
-                                  <div className="font-medium">At {goalValue}% Body Fat:</div>
-                                  <div>Est. Weight: {weightProjection.estimatedWeight.toFixed(1)} lb</div>
-                                  <div className="text-[10px] opacity-80 mt-0.5">
-                                    Lean: {weightProjection.leanMassChange >= 0 ? '+' : ''}{weightProjection.leanMassChange.toFixed(1)} lb projected
-                                  </div>
-                                </div>
-                              </>
-                            )}
-                          </div>
-                        );
-                      })()
-                    ) : forecast.dateText
-                  }>
-                    <span className={`text-xs tabular-nums font-medium cursor-help ${forecast.isMet ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-600 dark:text-gray-300'}`}>
-                      {forecast.timeText}
-                    </span>
-                  </Tooltip>
-                ) : goalValue ? (
-                  <span className="text-xs text-gray-400">—</span>
-                ) : (
-                  <span className="text-xs text-gray-300 dark:text-gray-700">—</span>
-                )}
-              </td>
-              <td className="px-2 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50 bg-gray-50/50 dark:bg-gray-800/30">
-                <span className={`text-xs tabular-nums font-medium ${trendColor}`}>
-                  {trendText}
-                </span>
-              </td>
-              {/* Combined data cells matching header order */}
+                  </td>
+                </>
+              }
+            >
               {dataColumns.map((col) => {
                 if (col.type === 'dexa') {
                   const dexaValue = getDexaValueForMetric(col.data, metric.key as string);
@@ -862,7 +838,7 @@ function CategorySection({
                   );
                 }
               })}
-            </tr>
+            </TimeSeriesRow>
           );
 
           // Insert Fat-to-Lean Change Ratio row after bodyFatMass
@@ -872,8 +848,9 @@ function CategorySection({
             const trendFatShare = latestEntry && comparisonEntry ? calculateFatShare(latestEntry, comparisonEntry) : null;
 
             const fatLeanRow = (
-              <tr key="fat-lean-ratio" className="hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors">
-                <td className="sticky left-0 z-10 bg-white dark:bg-gray-900 px-4 py-1.5 text-gray-600 dark:text-gray-300 min-w-[180px]">
+              <TimeSeriesRow
+                key="fat-lean-ratio"
+                label={
                   <span className="text-xs inline-flex items-center gap-1">
                     Fat-to-Lean Δ Ratio
                     <Tooltip content="Ideal: 50-100% when losing (losing mostly fat), 0-50% when gaining (gaining mostly lean)">
@@ -882,33 +859,38 @@ function CategorySection({
                       </svg>
                     </Tooltip>
                   </span>
-                </td>
-                <td className="px-2 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50 bg-blue-50/30 dark:bg-blue-900/10">
-                  <span className="text-xs text-gray-300 dark:text-gray-700">—</span>
-                </td>
-                <td className="px-2 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50 bg-blue-50/20 dark:bg-blue-900/5">
-                  <span className="text-xs text-gray-300 dark:text-gray-700">—</span>
-                </td>
-                <td className="px-2 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50 bg-gray-50/50 dark:bg-gray-800/30">
-                  {trendFatShare?.value !== null && trendFatShare?.value !== undefined ? (
-                    <Tooltip content={
-                      <div className="text-left">
-                        <div className="font-medium mb-1">Trend Period Breakdown</div>
-                        <div>Fat: {trendFatShare.fatChange >= 0 ? '+' : ''}{trendFatShare.fatChange.toFixed(1)} lb</div>
-                        <div>Lean: {trendFatShare.leanChange >= 0 ? '+' : ''}{trendFatShare.leanChange.toFixed(1)} lb</div>
-                        <div className="border-t border-gray-600 mt-1 pt-1">
-                          Total: {trendFatShare.weightChange >= 0 ? '+' : ''}{trendFatShare.weightChange.toFixed(1)} lb
-                        </div>
-                      </div>
-                    }>
-                      <span className={`text-xs tabular-nums font-medium cursor-help ${trendFatShare.isGood ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500 dark:text-red-400'}`}>
-                        {trendFatShare.value.toFixed(0)}%
-                      </span>
-                    </Tooltip>
-                  ) : (
-                    <span className="text-xs text-gray-300 dark:text-gray-700">—</span>
-                  )}
-                </td>
+                }
+                fixedContent={
+                  <>
+                    <td className="px-2 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50 bg-blue-50/30 dark:bg-blue-900/10">
+                      <span className="text-xs text-gray-300 dark:text-gray-700">—</span>
+                    </td>
+                    <td className="px-2 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50 bg-blue-50/20 dark:bg-blue-900/5">
+                      <span className="text-xs text-gray-300 dark:text-gray-700">—</span>
+                    </td>
+                    <td className="px-2 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50 bg-gray-50/50 dark:bg-gray-800/30">
+                      {trendFatShare?.value !== null && trendFatShare?.value !== undefined ? (
+                        <Tooltip content={
+                          <div className="text-left">
+                            <div className="font-medium mb-1">Trend Period Breakdown</div>
+                            <div>Fat: {trendFatShare.fatChange >= 0 ? '+' : ''}{trendFatShare.fatChange.toFixed(1)} lb</div>
+                            <div>Lean: {trendFatShare.leanChange >= 0 ? '+' : ''}{trendFatShare.leanChange.toFixed(1)} lb</div>
+                            <div className="border-t border-gray-600 mt-1 pt-1">
+                              Total: {trendFatShare.weightChange >= 0 ? '+' : ''}{trendFatShare.weightChange.toFixed(1)} lb
+                            </div>
+                          </div>
+                        }>
+                          <span className={`text-xs tabular-nums font-medium cursor-help ${trendFatShare.isGood ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500 dark:text-red-400'}`}>
+                            {trendFatShare.value.toFixed(0)}%
+                          </span>
+                        </Tooltip>
+                      ) : (
+                        <span className="text-xs text-gray-300 dark:text-gray-700">—</span>
+                      )}
+                    </td>
+                  </>
+                }
+              >
                 {dataColumns.map((col) => {
                   if (col.type === 'dexa') {
                     return (
@@ -1000,7 +982,7 @@ function CategorySection({
                     );
                   }
                 })}
-              </tr>
+              </TimeSeriesRow>
             );
             return [metricRow, fatLeanRow];
           }
@@ -1073,39 +1055,14 @@ function SegmentalSection({
 
   return (
     <>
-      <tr
-        className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
-        onClick={onToggle}
-      >
-        <td
-          className="sticky left-0 z-10 bg-gray-50 dark:bg-gray-900/50 px-4 py-2 text-xs font-medium text-gray-600 dark:text-gray-300 min-w-[180px]"
-        >
-          <span className="inline-flex items-center gap-1.5">
-            <svg
-              className={`w-3 h-3 text-gray-400 transition-transform ${isExpanded ? 'rotate-90' : ''}`}
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-            {title}
-          </span>
-        </td>
-        <td className="bg-gray-50 dark:bg-gray-900/50 border-l border-gray-100 dark:border-gray-800/50" />
-        <td className="bg-gray-50 dark:bg-gray-900/50 border-l border-gray-100 dark:border-gray-800/50" />
-        <td className="bg-gray-50 dark:bg-gray-900/50 border-l border-gray-100 dark:border-gray-800/50" />
-        {/* Combined cells matching header order */}
-        {dataColumns.map((col) => (
-          <td
-            key={col.type === 'dexa' ? col.data.id : col.data.id}
-            className={col.type === 'dexa'
-              ? "bg-amber-50/30 dark:bg-amber-900/10 border-l border-amber-200 dark:border-amber-800/50"
-              : "bg-gray-50 dark:bg-gray-900/50 border-l border-gray-100 dark:border-gray-800/50"
-            }
-          />
-        ))}
-      </tr>
+      <SectionHeaderRow
+        label={title}
+        color="gray"
+        isExpanded={isExpanded}
+        onToggle={onToggle}
+        columnCount={dataColumns.length}
+        fixedCellsCount={3}
+      />
       {isExpanded &&
         fields.map((field) => {
           // Calculate trend for this segmental field
@@ -1135,52 +1092,52 @@ function SegmentalSection({
           );
 
           return (
-            <tr
+            <TimeSeriesRow
               key={field.key}
-              className="hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors"
+              label={<span className="text-xs">{field.label}</span>}
+              fixedContent={
+                <>
+                  <td
+                    className={`px-2 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50 bg-blue-50/30 dark:bg-blue-900/10 ${isGoalEligible ? 'cursor-pointer hover:bg-blue-100/50 dark:hover:bg-blue-900/30' : ''}`}
+                    onClick={isGoalEligible ? () => onEditGoal({ metricKey: field.key as string, label: field.label }) : undefined}
+                  >
+                    {goalValue && latestLb ? (
+                      <Tooltip content={formatGapTooltip(latestLb, goalValue, higherIsBetter, 'lb')}>
+                        <span className={`text-xs tabular-nums font-medium cursor-help ${goalColor}`}>
+                          {goalValue.toFixed(1)}
+                        </span>
+                      </Tooltip>
+                    ) : goalValue ? (
+                      <span className={`text-xs tabular-nums font-medium ${goalColor}`}>
+                        {goalValue.toFixed(1)}
+                      </span>
+                    ) : isGoalEligible ? (
+                      <span className="text-xs text-gray-300 dark:text-gray-600">+</span>
+                    ) : (
+                      <span className="text-xs text-gray-300 dark:text-gray-700">—</span>
+                    )}
+                  </td>
+                  <td className="px-2 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50 bg-blue-50/20 dark:bg-blue-900/5">
+                    {forecast ? (
+                      <Tooltip content={forecast.dateText}>
+                        <span className={`text-xs tabular-nums font-medium cursor-help ${forecast.isMet ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-600 dark:text-gray-300'}`}>
+                          {forecast.timeText}
+                        </span>
+                      </Tooltip>
+                    ) : goalValue ? (
+                      <span className="text-xs text-gray-400">—</span>
+                    ) : (
+                      <span className="text-xs text-gray-300 dark:text-gray-700">—</span>
+                    )}
+                  </td>
+                  <td className="px-2 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50 bg-gray-50/50 dark:bg-gray-800/30">
+                    <span className={`text-xs tabular-nums font-medium ${trendColor}`}>
+                      {trendText}
+                    </span>
+                  </td>
+                </>
+              }
             >
-              <td className="sticky left-0 z-10 bg-white dark:bg-gray-900 px-4 py-1.5 text-gray-600 dark:text-gray-300 min-w-[180px]">
-                <span className="text-xs">{field.label}</span>
-              </td>
-              <td
-                className={`px-2 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50 bg-blue-50/30 dark:bg-blue-900/10 ${isGoalEligible ? 'cursor-pointer hover:bg-blue-100/50 dark:hover:bg-blue-900/30' : ''}`}
-                onClick={isGoalEligible ? () => onEditGoal({ metricKey: field.key as string, label: field.label }) : undefined}
-              >
-                {goalValue && latestLb ? (
-                  <Tooltip content={formatGapTooltip(latestLb, goalValue, higherIsBetter, 'lb')}>
-                    <span className={`text-xs tabular-nums font-medium cursor-help ${goalColor}`}>
-                      {goalValue.toFixed(1)}
-                    </span>
-                  </Tooltip>
-                ) : goalValue ? (
-                  <span className={`text-xs tabular-nums font-medium ${goalColor}`}>
-                    {goalValue.toFixed(1)}
-                  </span>
-                ) : isGoalEligible ? (
-                  <span className="text-xs text-gray-300 dark:text-gray-600">+</span>
-                ) : (
-                  <span className="text-xs text-gray-300 dark:text-gray-700">—</span>
-                )}
-              </td>
-              <td className="px-2 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50 bg-blue-50/20 dark:bg-blue-900/5">
-                {forecast ? (
-                  <Tooltip content={forecast.dateText}>
-                    <span className={`text-xs tabular-nums font-medium cursor-help ${forecast.isMet ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-600 dark:text-gray-300'}`}>
-                      {forecast.timeText}
-                    </span>
-                  </Tooltip>
-                ) : goalValue ? (
-                  <span className="text-xs text-gray-400">—</span>
-                ) : (
-                  <span className="text-xs text-gray-300 dark:text-gray-700">—</span>
-                )}
-              </td>
-              <td className="px-2 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50 bg-gray-50/50 dark:bg-gray-800/30">
-                <span className={`text-xs tabular-nums font-medium ${trendColor}`}>
-                  {trendText}
-                </span>
-              </td>
-              {/* Combined data cells matching header order */}
               {dataColumns.map((col) => {
                 if (col.type === 'dexa') {
                   const dexaValue = getDexaSegmentalValue(col.data, field.key as string);
@@ -1228,7 +1185,7 @@ function SegmentalSection({
                   );
                 }
               })}
-            </tr>
+            </TimeSeriesRow>
           );
         })}
     </>
