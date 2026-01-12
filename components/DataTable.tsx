@@ -55,6 +55,64 @@ function getTrendIndicator(
   };
 }
 
+/**
+ * Calculate Fat Share of Weight Change between two entries
+ * Returns what percentage of weight change came from fat mass
+ */
+function calculateFatShare(
+  currentEntry: BIAEntry,
+  previousEntry: BIAEntry | undefined
+): { value: number | null; isGood: boolean | null; fatChange: number; leanChange: number; weightChange: number } {
+  if (!previousEntry) {
+    return { value: null, isGood: null, fatChange: 0, leanChange: 0, weightChange: 0 };
+  }
+
+  const currentWeight = currentEntry.weight;
+  const previousWeight = previousEntry.weight;
+  const currentFatMass = currentEntry.bodyFatMass || (currentEntry.weight * currentEntry.bodyFatPercentage / 100);
+  const previousFatMass = previousEntry.bodyFatMass || (previousEntry.weight * previousEntry.bodyFatPercentage / 100);
+
+  if (!currentWeight || !previousWeight || currentWeight === 0 || previousWeight === 0) {
+    return { value: null, isGood: null, fatChange: 0, leanChange: 0, weightChange: 0 };
+  }
+
+  const weightChange = currentWeight - previousWeight;
+  const fatChange = currentFatMass - previousFatMass;
+  const leanChange = weightChange - fatChange;
+
+  // Avoid division by zero
+  if (Math.abs(weightChange) < 0.01) {
+    // Weight essentially unchanged - could be recomp
+    if (Math.abs(fatChange) > 0.1) {
+      // Recomp scenario: weight stable but fat changed
+      return {
+        value: null,
+        isGood: fatChange < 0, // Less fat is good
+        fatChange,
+        leanChange,
+        weightChange
+      };
+    }
+    return { value: null, isGood: null, fatChange, leanChange, weightChange };
+  }
+
+  const fatShare = (fatChange / weightChange) * 100;
+
+  // Determine if this is a good outcome
+  // When losing weight: higher fat share is better (losing mostly fat)
+  // When gaining weight: lower fat share is better (gaining mostly lean)
+  let isGood: boolean | null = null;
+  if (weightChange < 0) {
+    // Losing weight - higher fat share is better
+    isGood = fatShare > 50;
+  } else {
+    // Gaining weight - lower fat share is better
+    isGood = fatShare < 50;
+  }
+
+  return { value: fatShare, isGood, fatChange, leanChange, weightChange };
+}
+
 type RangeStatus = 'below' | 'within' | 'above' | null;
 
 function getRangeStatus(value: number, metric: MetricDefinition): RangeStatus {
@@ -523,6 +581,7 @@ interface CategorySectionProps {
 }
 
 function CategorySection({
+  category,
   categoryLabel,
   metrics,
   entries,
@@ -726,6 +785,102 @@ function CategorySection({
             </tr>
           );
         })}
+      {/* Fat Share of Weight Change - only show in core section */}
+      {isExpanded && category === 'core' && entries.length > 0 && (
+        <tr className="hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors bg-gradient-to-r from-purple-50/30 to-transparent dark:from-purple-900/10">
+          <td className="sticky left-0 z-10 bg-white dark:bg-gray-900 px-4 py-1.5 text-gray-600 dark:text-gray-300 min-w-[180px]">
+            <span className="text-xs inline-flex items-center gap-1">
+              <span className="text-purple-600 dark:text-purple-400">⚡</span>
+              Fat Share of Δ
+              <Tooltip content={
+                <div className="text-left">
+                  <div className="font-medium mb-1">Fat Share of Weight Change</div>
+                  <div>Shows what % of weight change came from fat.</div>
+                  <div className="mt-1 text-xs opacity-80">
+                    • Losing: Higher % = better (losing fat)<br />
+                    • Gaining: Lower % = better (gaining lean)
+                  </div>
+                </div>
+              }>
+                <svg className="w-3 h-3 text-gray-400 cursor-help" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </Tooltip>
+            </span>
+          </td>
+          <td className="px-2 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50 bg-blue-50/30 dark:bg-blue-900/10">
+            <span className="text-xs text-gray-300 dark:text-gray-700">—</span>
+          </td>
+          <td className="px-2 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50 bg-blue-50/20 dark:bg-blue-900/5">
+            <span className="text-xs text-gray-300 dark:text-gray-700">—</span>
+          </td>
+          <td className="px-2 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50 bg-gray-50/50 dark:bg-gray-800/30">
+            <span className="text-xs text-gray-300 dark:text-gray-700">—</span>
+          </td>
+          {dataColumns.map((col) => {
+            if (col.type === 'dexa') {
+              return (
+                <td
+                  key={col.data.id}
+                  className="px-3 py-1.5 text-center border-l border-amber-200 dark:border-amber-800/50 bg-amber-50/30 dark:bg-amber-900/10"
+                >
+                  <span className="text-xs text-gray-300 dark:text-gray-600">—</span>
+                </td>
+              );
+            } else {
+              const entry = col.data;
+              const entryIdx = entries.indexOf(entry);
+              const previousEntry = entries[entryIdx + 1];
+              const fatShareData = calculateFatShare(entry, previousEntry);
+
+              if (fatShareData.value === null && fatShareData.isGood === null) {
+                return (
+                  <td
+                    key={entry.id}
+                    className="px-3 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50"
+                  >
+                    <span className="text-xs text-gray-300 dark:text-gray-600">—</span>
+                  </td>
+                );
+              }
+
+              const colorClass = fatShareData.isGood === true
+                ? 'text-emerald-600 dark:text-emerald-400'
+                : fatShareData.isGood === false
+                  ? 'text-red-500 dark:text-red-400'
+                  : 'text-gray-600 dark:text-gray-300';
+
+              const displayValue = fatShareData.value !== null
+                ? `${fatShareData.value.toFixed(0)}%`
+                : (fatShareData.isGood !== null ? '↔' : '—');
+
+              const tooltipContent = (
+                <div className="text-left">
+                  <div className="font-medium mb-1">Weight Change Breakdown</div>
+                  <div>Fat: {fatShareData.fatChange >= 0 ? '+' : ''}{fatShareData.fatChange.toFixed(1)} lb</div>
+                  <div>Lean: {fatShareData.leanChange >= 0 ? '+' : ''}{fatShareData.leanChange.toFixed(1)} lb</div>
+                  <div className="border-t border-gray-600 mt-1 pt-1">
+                    Total: {fatShareData.weightChange >= 0 ? '+' : ''}{fatShareData.weightChange.toFixed(1)} lb
+                  </div>
+                </div>
+              );
+
+              return (
+                <td
+                  key={entry.id}
+                  className="px-3 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50"
+                >
+                  <Tooltip content={tooltipContent}>
+                    <span className={`text-xs tabular-nums font-medium cursor-help ${colorClass}`}>
+                      {displayValue}
+                    </span>
+                  </Tooltip>
+                </td>
+              );
+            }
+          })}
+        </tr>
+      )}
     </>
   );
 }
