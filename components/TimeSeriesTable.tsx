@@ -89,6 +89,7 @@ interface SectionHeaderRowProps<T> {
     /** Helper to render empty cells for columns if needed, though usually handled by CSS/colspan or explicit empty cells */
     columnCount?: number;
     fixedCellsCount?: number; // Number of fixed cells between label and data columns
+    fixedContent?: ReactNode; // Content for the fixed cells
 }
 
 const COLOR_STYLES: Record<SectionColor, {
@@ -130,9 +131,10 @@ export function SectionHeaderRow({
     onToggle,
     columnCount = 0,
     fixedCellsCount = 0,
+    fixedContent,
 }: SectionHeaderRowProps<any>) {
     const styles = COLOR_STYLES[color];
-    const totalCells = columnCount + fixedCellsCount;
+    const totalCells = columnCount;
 
     return (
         <tr
@@ -154,8 +156,18 @@ export function SectionHeaderRow({
                     {label}
                 </span>
             </td>
-            {/* We render individual cells to match the grid structure perfectly if needed, or just spacers */}
-            {/* For simplicity we can map if count is provided, to ensure borders align perfectly */}
+
+            {/* Context for fixed columns */}
+            {fixedContent ? (
+                fixedContent
+            ) : (
+                // If no fixed content, render empty cells for fixed count
+                Array.from({ length: fixedCellsCount }).map((_, i) => (
+                    <td key={`fixed-${i}`} className={`${styles.rowBg} border-l ${styles.border}`} />
+                ))
+            )}
+
+            {/* Scrollable column placeholders */}
             {Array.from({ length: totalCells }).map((_, i) => (
                 <td key={i} className={`${styles.rowBg} border-l ${styles.border}`} />
             ))}

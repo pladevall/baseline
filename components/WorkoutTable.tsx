@@ -16,7 +16,7 @@ interface WorkoutTableProps {
 }
 
 type VolumeDisplayMode = 'sets' | 'volume';
-type TrendPeriod = '7' | '30' | '90' | 'YTD';
+type TrendPeriod = 'WTD' | 'MTD' | 'QTD' | 'YTD';
 
 // Format seconds as mm:ss or h:mm:ss
 function formatDuration(seconds: number): string {
@@ -106,7 +106,9 @@ export default function WorkoutTable({ runningActivities, liftingWorkouts, goals
     const [workoutType, setWorkoutType] = useState<WorkoutType>('all');
     const [volumePeriod, setVolumePeriod] = useState<VolumePeriod>('WTD');
     const [volumeDisplayMode, setVolumeDisplayMode] = useState<VolumeDisplayMode>('sets');
-    const [trendPeriod, setTrendPeriod] = useState<TrendPeriod>('30');
+    const [trendPeriod, setTrendPeriod] = useState<TrendPeriod>('WTD');
+
+    const [highlightedRanges, setHighlightedRanges] = useState<{ metricKey: string; current: { start: Date; end: Date }; previous: { start: Date; end: Date } } | null>(null);
     const [editingGoal, setEditingGoal] = useState<{ metricKey: string; label: string; type?: 'number' | 'duration' | 'pace' } | null>(null);
 
     const goalsMap = useMemo(() => new Map(goals.map(g => [g.metricKey, g.targetValue])), [goals]);
@@ -230,22 +232,45 @@ export default function WorkoutTable({ runningActivities, liftingWorkouts, goals
 
     // Calculate trend data (compare current period vs previous period)
     const trendData = useMemo(() => {
+        // Reset calculations based on new period types
         const now = new Date();
-        let currentStart: Date;
-        let previousStart: Date;
+        now.setHours(23, 59, 59, 999); // Include full current day in comparison
+
+        let currentStart = new Date();
+        let previousStart = new Date();
         let previousEnd: Date;
 
-        if (trendPeriod === 'YTD') {
-            // YTD: compare to same period last year
-            currentStart = new Date(now.getFullYear(), 0, 1);
-            previousStart = new Date(now.getFullYear() - 1, 0, 1);
-            previousEnd = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
-        } else {
-            const days = parseInt(trendPeriod);
-            currentStart = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
-            previousEnd = new Date(currentStart.getTime() - 1); // Day before current period
-            previousStart = new Date(previousEnd.getTime() - days * 24 * 60 * 60 * 1000);
+        // 1. Determine Current Start Date
+        currentStart.setHours(0, 0, 0, 0);
+        if (trendPeriod === 'WTD') {
+            const day = currentStart.getDay();
+            const diff = currentStart.getDate() - day + (day === 0 ? -6 : 1); // Monday
+            currentStart.setDate(diff);
+        } else if (trendPeriod === 'MTD') {
+            currentStart.setDate(1);
+        } else if (trendPeriod === 'QTD') {
+            const quarterMonth = Math.floor(currentStart.getMonth() / 3) * 3;
+            currentStart.setMonth(quarterMonth, 1);
+        } else if (trendPeriod === 'YTD') {
+            currentStart.setMonth(0, 1);
         }
+
+        // 2. Determine Previous Start Date
+        previousStart = new Date(currentStart);
+        if (trendPeriod === 'WTD') {
+            previousStart.setDate(previousStart.getDate() - 7);
+        } else if (trendPeriod === 'MTD') {
+            previousStart.setMonth(previousStart.getMonth() - 1);
+        } else if (trendPeriod === 'QTD') {
+            previousStart.setMonth(previousStart.getMonth() - 3);
+        } else if (trendPeriod === 'YTD') {
+            previousStart.setFullYear(previousStart.getFullYear() - 1);
+        }
+
+        // 3. Determine Previous End Date (same duration into period)
+        // Duration in milliseconds from start to now
+        const duration = now.getTime() - currentStart.getTime();
+        previousEnd = new Date(previousStart.getTime() + duration);
 
         // Current period totals
         const currentWorkouts = liftingWorkouts.filter(w => {
@@ -322,9 +347,21 @@ export default function WorkoutTable({ runningActivities, liftingWorkouts, goals
             running: {
                 currentMiles,
                 previousMiles,
+            },
+            ranges: {
+                current: { start: currentStart, end: now },
+                previous: { start: previousStart, end: previousEnd }
             }
         };
     }, [liftingWorkouts, runningActivities, trendPeriod]);
+
+    // Trend label mapping
+    const periodLabels: Record<TrendPeriod, string> = {
+        'WTD': 'prev week',
+        'MTD': 'prev month',
+        'QTD': 'prev quarter',
+        'YTD': 'prev year',
+    };
 
     // Get body parts that have data
     const activeBodyParts = useMemo(() => {
@@ -467,6 +504,7 @@ export default function WorkoutTable({ runningActivities, liftingWorkouts, goals
                     </th>
                     <th className="px-2 py-2 text-center min-w-[80px] border-l border-gray-100 dark:border-gray-800/50 bg-blue-50/50 dark:bg-blue-900/20">
                         <div className="flex flex-col items-center gap-1">
+                            <span className="text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase">Volume</span>
                             <div className="flex gap-0.5">
                                 {(['sets', 'volume'] as VolumeDisplayMode[]).map(mode => (
                                     <button
@@ -478,24 +516,6 @@ export default function WorkoutTable({ runningActivities, liftingWorkouts, goals
                                             }`}
                                     >
                                         {mode === 'sets' ? 'Sets' : 'Vol'}
-                                    </button>
-                                ))}
-                            </div>
-                            <div className="flex gap-0.5">
-                                {(['WTD', 'MTD', 'QTD', 'YTD', 'PY'] as VolumePeriod[]).map(period => (
-                                    <button
-                                        key={period}
-                                        onClick={() => setVolumePeriod(period)}
-                                        className={`px-1.5 py-0.5 text-[9px] rounded transition-colors ${volumePeriod === period
-                                            ? 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 font-medium'
-                                            : 'text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
-                                            }`}
-                                    >
-                                        {period === 'PY' ? (
-                                            <Tooltip content={`Previous Year (Jan 1 – Dec 31, ${new Date().getFullYear() - 1})`}>
-                                                PY
-                                            </Tooltip>
-                                        ) : period}
                                     </button>
                                 ))}
                             </div>
@@ -556,6 +576,35 @@ export default function WorkoutTable({ runningActivities, liftingWorkouts, goals
                 color="gray"
                 columnCount={colCount}
                 fixedCellsCount={3}
+                fixedContent={
+                    <>
+                        <td className="bg-gray-50 dark:bg-gray-900/50 border-l border-gray-100 dark:border-gray-800/50" />
+                        <td className="px-2 py-1 bg-gray-50 dark:bg-gray-900/50 border-l border-gray-100 dark:border-gray-800/50 text-center">
+                            <div className="flex justify-center gap-0.5">
+                                {(['WTD', 'MTD', 'QTD', 'YTD', 'PY'] as VolumePeriod[]).map(period => (
+                                    <button
+                                        key={period}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setVolumePeriod(period);
+                                        }}
+                                        className={`px-1.5 py-0.5 text-[9px] rounded transition-colors ${volumePeriod === period
+                                            ? 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 font-medium'
+                                            : 'text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
+                                            }`}
+                                    >
+                                        {period === 'PY' ? (
+                                            <Tooltip content={`Previous Year (Jan 1 – Dec 31, ${new Date().getFullYear() - 1})`}>
+                                                PY
+                                            </Tooltip>
+                                        ) : period}
+                                    </button>
+                                ))}
+                            </div>
+                        </td>
+                        <td className="bg-gray-50 dark:bg-gray-900/50 border-l border-gray-100 dark:border-gray-800/50" />
+                    </>
+                }
             />
 
             {/* Lifting Section */}
@@ -584,10 +633,32 @@ export default function WorkoutTable({ runningActivities, liftingWorkouts, goals
                                     {(() => {
                                         const diff = volumeDisplayMode === 'sets' ? trendData.setsDiff : trendData.volumeDiff;
                                         const { text, color } = formatTrendValue(diff, volumeDisplayMode === 'volume');
+                                        const currentVal = volumeDisplayMode === 'sets' ? trendData.lifting.current.totalSets : trendData.lifting.current.totalVolumeLbs;
+                                        const prevVal = volumeDisplayMode === 'sets' ? trendData.lifting.previous.totalSets : trendData.lifting.previous.totalVolumeLbs;
+                                        const formatFn = (v: number) => volumeDisplayMode === 'volume' ? formatVolume(v) : v;
+
+
+
                                         return (
-                                            <Tooltip content={`Change since ${trendData.comparisonDate.toLocaleDateString()}`}>
-                                                <span className={`text-xs tabular-nums font-medium cursor-help ${color}`}>{text}</span>
-                                            </Tooltip>
+                                            <div
+                                                onMouseEnter={() => setHighlightedRanges({ ...trendData.ranges, metricKey: 'lift_total' })}
+                                                onMouseLeave={() => setHighlightedRanges(null)}
+                                            >
+                                                <Tooltip content={
+                                                    <div className="text-left text-xs">
+                                                        <div className="font-medium mb-1">Change: <span className={color}>{text}</span></div>
+                                                        <div className="text-gray-400 mb-2">vs {periodLabels[trendPeriod]}</div>
+                                                        <div className="pt-2 border-t border-gray-700 grid grid-cols-2 gap-x-4 gap-y-1">
+                                                            <span className="text-blue-600 dark:text-blue-400 font-medium">Current:</span>
+                                                            <span className="text-right font-medium">{formatFn(currentVal)}</span>
+                                                            <span className="text-purple-600 dark:text-purple-400 font-medium">Previous:</span>
+                                                            <span className="text-right font-medium">{formatFn(prevVal)}</span>
+                                                        </div>
+                                                    </div>
+                                                }>
+                                                    <span className={`text-xs tabular-nums font-medium cursor-help ${color}`}>{text}</span>
+                                                </Tooltip>
+                                            </div>
                                         );
                                     })()}
                                 </td>
@@ -597,8 +668,14 @@ export default function WorkoutTable({ runningActivities, liftingWorkouts, goals
                     >
                         {displayDates.map(date => {
                             const workout = liftingByDate.get(date);
+                            const d = new Date(date);
+                            const isRowHighlighted = highlightedRanges?.metricKey === 'lift_total';
+                            const isCurrent = isRowHighlighted && highlightedRanges && d >= highlightedRanges.current.start && d <= highlightedRanges.current.end;
+                            const isPrevious = isRowHighlighted && highlightedRanges && d >= highlightedRanges.previous.start && d <= highlightedRanges.previous.end;
+
                             return (
-                                <td key={date} className="px-3 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50">
+                                <td key={date} className={`px-3 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50 ${isCurrent ? 'bg-blue-100/50 dark:bg-blue-900/30' : isPrevious ? 'bg-purple-100/50 dark:bg-purple-900/30' : ''
+                                    }`}>
                                     {workout ? (
                                         <span className="text-xs tabular-nums text-gray-900 dark:text-gray-100">
                                             {workout.totalSets}
@@ -701,11 +778,31 @@ export default function WorkoutTable({ runningActivities, liftingWorkouts, goals
                                             </span>
                                         </td>
                                         <td className="px-2 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50 bg-gray-50/30 dark:bg-gray-800/20">
-                                            <Tooltip content={`Change since ${trendData.comparisonDate.toLocaleDateString()}`}>
-                                                <span className={`text-xs tabular-nums font-medium cursor-help ${trendColor}`}>
-                                                    {trendText}
-                                                </span>
-                                            </Tooltip>
+                                            <div
+                                                onMouseEnter={() => setHighlightedRanges({ ...trendData.ranges, metricKey: part })}
+                                                onMouseLeave={() => setHighlightedRanges(null)}
+                                            >
+                                                <Tooltip content={
+                                                    <div className="text-left text-xs">
+                                                        <div className="font-medium mb-1">Change: <span className={trendColor}>{trendText}</span></div>
+                                                        <div className="text-gray-400 mb-2">vs {periodLabels[trendPeriod]}</div>
+                                                        <div className="pt-2 border-t border-gray-700 grid grid-cols-2 gap-x-4 gap-y-1">
+                                                            <span className="text-blue-600 dark:text-blue-400 font-medium">Current:</span>
+                                                            <span className="text-right font-medium">{volumeDisplayMode === 'volume' ? formatVolume(volumeValue) : volumeValue}</span>
+                                                            <span className="text-purple-600 dark:text-purple-400 font-medium">Previous:</span>
+                                                            <span className="text-right font-medium">
+                                                                {volumeDisplayMode === 'volume'
+                                                                    ? formatVolume((trendData.lifting.previous.bodyPartVolume[part] || 0))
+                                                                    : (trendData.lifting.previous.bodyPartSets[part] || 0)}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                }>
+                                                    <span className={`text-xs tabular-nums font-medium cursor-help ${trendColor}`}>
+                                                        {trendText}
+                                                    </span>
+                                                </Tooltip>
+                                            </div>
                                         </td>
                                     </>
                                 }
@@ -717,8 +814,15 @@ export default function WorkoutTable({ runningActivities, liftingWorkouts, goals
                                     const displayValue = volumeDisplayMode === 'sets'
                                         ? stats?.sets
                                         : stats?.volumeLbs;
+
+                                    const d = new Date(date);
+                                    const isRowHighlighted = highlightedRanges?.metricKey === part;
+                                    const isCurrent = isRowHighlighted && highlightedRanges && d >= highlightedRanges.current.start && d <= highlightedRanges.current.end;
+                                    const isPrevious = isRowHighlighted && highlightedRanges && d >= highlightedRanges.previous.start && d <= highlightedRanges.previous.end;
+
                                     return (
-                                        <td key={date} className="px-3 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50">
+                                        <td key={date} className={`px-3 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50 ${isCurrent ? 'bg-blue-100/50 dark:bg-blue-900/30' : isPrevious ? 'bg-purple-100/50 dark:bg-purple-900/30' : ''
+                                            }`}>
                                             {displayValue ? (
                                                 <span className="text-xs tabular-nums text-gray-900 dark:text-gray-100">
                                                     {volumeDisplayMode === 'volume' ? formatVolume(displayValue) : displayValue}
@@ -762,9 +866,25 @@ export default function WorkoutTable({ runningActivities, liftingWorkouts, goals
                                         const sign = diff > 0 ? '+' : '';
                                         const color = diff > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500 dark:text-red-400';
                                         return (
-                                            <Tooltip content={`Change since ${trendData.comparisonDate.toLocaleDateString()}`}>
-                                                <span className={`text-xs tabular-nums font-medium cursor-help ${color}`}>{sign}{diff.toFixed(1)}</span>
-                                            </Tooltip>
+                                            <div
+                                                onMouseEnter={() => setHighlightedRanges({ ...trendData.ranges, metricKey: 'run_miles' })}
+                                                onMouseLeave={() => setHighlightedRanges(null)}
+                                            >
+                                                <Tooltip content={
+                                                    <div className="text-left text-xs">
+                                                        <div className="font-medium mb-1">Change: <span className={color}>{sign}{diff.toFixed(1)}</span></div>
+                                                        <div className="text-gray-400 mb-2">vs {periodLabels[trendPeriod]}</div>
+                                                        <div className="pt-2 border-t border-gray-700 grid grid-cols-2 gap-x-4 gap-y-1">
+                                                            <span className="text-blue-600 dark:text-blue-400 font-medium">Current:</span>
+                                                            <span className="text-right font-medium">{trendData.running.currentMiles.toFixed(1)}</span>
+                                                            <span className="text-purple-600 dark:text-purple-400 font-medium">Previous:</span>
+                                                            <span className="text-right font-medium">{trendData.running.previousMiles.toFixed(1)}</span>
+                                                        </div>
+                                                    </div>
+                                                }>
+                                                    <span className={`text-xs tabular-nums font-medium cursor-help ${color}`}>{sign}{diff.toFixed(1)}</span>
+                                                </Tooltip>
+                                            </div>
                                         );
                                     })()}
                                 </td>
@@ -774,8 +894,14 @@ export default function WorkoutTable({ runningActivities, liftingWorkouts, goals
                     >
                         {displayDates.map(date => {
                             const activity = runningByDate.get(date);
+                            const d = new Date(date);
+                            const isRowHighlighted = highlightedRanges?.metricKey === 'run_miles';
+                            const isCurrent = isRowHighlighted && highlightedRanges && d >= highlightedRanges.current.start && d <= highlightedRanges.current.end;
+                            const isPrevious = isRowHighlighted && highlightedRanges && d >= highlightedRanges.previous.start && d <= highlightedRanges.previous.end;
+
                             return (
-                                <td key={date} className="px-3 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50">
+                                <td key={date} className={`px-3 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50 ${isCurrent ? 'bg-blue-100/50 dark:bg-blue-900/30' : isPrevious ? 'bg-purple-100/50 dark:bg-purple-900/30' : ''
+                                    }`}>
                                     {activity ? (
                                         <span className="text-xs tabular-nums text-gray-900 dark:text-gray-100">
                                             {activity.distanceMiles.toFixed(1)}

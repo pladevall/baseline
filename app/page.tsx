@@ -376,6 +376,42 @@ export default function Home() {
           <ThemeToggle />
         </header>
 
+
+
+        {/* Workouts Section - show if there are any workouts */}
+        {(runningActivities.length > 0 || liftingWorkouts.length > 0) && (
+          <section className="mb-6 bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800">
+            <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800">
+              <h2 className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                Workouts
+              </h2>
+            </div>
+            <WorkoutTable
+              runningActivities={runningActivities}
+              liftingWorkouts={liftingWorkouts}
+              goals={goals}
+              onSaveGoal={handleSaveGoal}
+              onDeleteGoal={handleDeleteGoal}
+            />
+          </section>
+        )}
+
+        <section className="mb-6 bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800">
+          <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800">
+            <h2 className="text-sm font-medium text-gray-900 dark:text-gray-100">
+              Measurements
+            </h2>
+          </div>
+          <DataTable
+            entries={entries}
+            goals={goals}
+            bodyspecScans={visibleScans}
+            onDelete={handleDelete}
+            onSaveGoal={handleSaveGoal}
+            onDeleteGoal={handleDeleteGoal}
+          />
+        </section>
+
         {/* Unified Integrations Section */}
         <IntegrationTabs
           onUpload={handleUpload}
@@ -398,40 +434,6 @@ export default function Home() {
           liftingWorkouts={liftingWorkouts}
           onWorkoutSync={loadWorkoutData}
         />
-
-        {/* Workouts Section - show if there are any workouts */}
-        {(runningActivities.length > 0 || liftingWorkouts.length > 0) && (
-          <section className="mb-6 bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800">
-            <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800">
-              <h2 className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                Workouts
-              </h2>
-            </div>
-            <WorkoutTable
-              runningActivities={runningActivities}
-              liftingWorkouts={liftingWorkouts}
-              goals={goals}
-              onSaveGoal={handleSaveGoal}
-              onDeleteGoal={handleDeleteGoal}
-            />
-          </section>
-        )}
-
-        <section className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800">
-          <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800">
-            <h2 className="text-sm font-medium text-gray-900 dark:text-gray-100">
-              Measurements
-            </h2>
-          </div>
-          <DataTable
-            entries={entries}
-            goals={goals}
-            bodyspecScans={visibleScans}
-            onDelete={handleDelete}
-            onSaveGoal={handleSaveGoal}
-            onDeleteGoal={handleDeleteGoal}
-          />
-        </section>
       </div>
     </div>
   );
