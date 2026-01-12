@@ -5,7 +5,11 @@ import FileUpload from '@/components/FileUpload';
 import DataTable from '@/components/DataTable';
 import BodyspecConnect from '@/components/BodyspecConnect';
 import BodyspecSyncButton from '@/components/BodyspecSyncButton';
-import { BIAEntry, BodyspecScan } from '@/lib/types';
+import StravaConnect from '@/components/StravaConnect';
+import HevyConnect from '@/components/HevyConnect';
+import WorkoutSyncButton from '@/components/WorkoutSyncButton';
+import WorkoutTable from '@/components/WorkoutTable';
+import { BIAEntry, BodyspecScan, RunningActivity, LiftingWorkout } from '@/lib/types';
 import { parsePDFFile } from '@/lib/client-pdf-parser';
 import ThemeToggle from '@/components/ThemeToggle';
 import { getEntriesFromDb, saveEntryToDb, deleteEntryFromDb, migrateFromLocalStorage, getPendingImages, deletePendingImage, saveOcrDebug, getGoals, saveGoal, deleteGoal, Goal } from '@/lib/supabase';
@@ -15,6 +19,12 @@ export default function Home() {
   const [bodyspecScans, setBodyspecScans] = useState<BodyspecScan[]>([]);
   const [bodyspecConnections, setBodyspecConnections] = useState<any[]>([]);
   const [goals, setGoals] = useState<Goal[]>([]);
+  // Workout tracking state
+  const [stravaConnections, setStravaConnections] = useState<any[]>([]);
+  const [hevyConnections, setHevyConnections] = useState<any[]>([]);
+  const [runningActivities, setRunningActivities] = useState<RunningActivity[]>([]);
+  const [liftingWorkouts, setLiftingWorkouts] = useState<LiftingWorkout[]>([]);
+  const [showWorkoutSection, setShowWorkoutSection] = useState(false);
   const [hiddenScans, setHiddenScans] = useState<Set<string>>(() => {
     // Load from localStorage on init
     if (typeof window !== 'undefined') {
@@ -114,6 +124,42 @@ export default function Home() {
     }
   }, []);
 
+  const loadWorkoutData = useCallback(async () => {
+    try {
+      // Load Strava connections and activities
+      const [stravaConnRes, stravaActivitiesRes] = await Promise.all([
+        fetch('/api/strava/connections'),
+        fetch('/api/strava/activities'),
+      ]);
+
+      if (stravaConnRes.ok) {
+        const data = await stravaConnRes.json();
+        setStravaConnections(data.connections || []);
+      }
+      if (stravaActivitiesRes.ok) {
+        const data = await stravaActivitiesRes.json();
+        setRunningActivities(data.activities || []);
+      }
+
+      // Load Hevy connections and workouts
+      const [hevyConnRes, hevyWorkoutsRes] = await Promise.all([
+        fetch('/api/hevy/connections'),
+        fetch('/api/hevy/workouts'),
+      ]);
+
+      if (hevyConnRes.ok) {
+        const data = await hevyConnRes.json();
+        setHevyConnections(data.connections || []);
+      }
+      if (hevyWorkoutsRes.ok) {
+        const data = await hevyWorkoutsRes.json();
+        setLiftingWorkouts(data.workouts || []);
+      }
+    } catch (err) {
+      console.error('Failed to load workout data:', err);
+    }
+  }, []);
+
   useEffect(() => {
     const init = async () => {
       try {
@@ -181,6 +227,9 @@ export default function Home() {
 
         // Load Bodyspec data
         await loadBodyspecData();
+
+        // Load workout data
+        await loadWorkoutData();
       } catch (err) {
         console.error('Failed to load entries:', err);
         setError('Failed to load data. Please check your connection.');
@@ -190,7 +239,7 @@ export default function Home() {
     };
 
     init();
-  }, [loadBodyspecData]);
+  }, [loadBodyspecData, loadWorkoutData]);
 
   const handleUpload = useCallback(async (files: File[]) => {
     setIsLoading(true);
@@ -449,6 +498,73 @@ export default function Home() {
                   )}
                 </div>
               )}
+            </div>
+          )}
+        </section>
+
+        {/* Workout Tracking Section */}
+        <section className="mb-6 bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden">
+          <button
+            onClick={() => setShowWorkoutSection(!showWorkoutSection)}
+            className="w-full p-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+          >
+            <div className="flex items-center gap-2">
+              <h2 className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                Workout Tracking
+              </h2>
+              {(stravaConnections.length > 0 || hevyConnections.length > 0) && (
+                <span className="text-xs text-gray-500 dark:text-gray-400">
+                  {runningActivities.length + liftingWorkouts.length} workouts
+                </span>
+              )}
+            </div>
+            <svg
+              className={`w-5 h-5 text-gray-500 transition-transform ${showWorkoutSection ? 'rotate-180' : ''}`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+
+          {showWorkoutSection && (
+            <div className="border-t border-gray-200 dark:border-gray-800 p-4 space-y-6">
+              {/* Connection cards */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                  <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-3">🏃 Strava (Running)</h3>
+                  <StravaConnect
+                    connections={stravaConnections}
+                    onConnectionChange={loadWorkoutData}
+                  />
+                </div>
+
+                <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                  <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-3">🏋️ Hevy (Lifting)</h3>
+                  <HevyConnect
+                    connections={hevyConnections}
+                    onConnectionChange={loadWorkoutData}
+                  />
+                </div>
+              </div>
+
+              {/* Sync button */}
+              {(stravaConnections.length > 0 || hevyConnections.length > 0) && (
+                <div className="flex justify-end">
+                  <WorkoutSyncButton
+                    stravaConnectionId={stravaConnections[0]?.id}
+                    hevyConnectionId={hevyConnections[0]?.id}
+                    onSyncComplete={loadWorkoutData}
+                  />
+                </div>
+              )}
+
+              {/* Workout table */}
+              <WorkoutTable
+                runningActivities={runningActivities}
+                liftingWorkouts={liftingWorkouts}
+              />
             </div>
           )}
         </section>

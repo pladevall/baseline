@@ -251,3 +251,131 @@ export const GOAL_ELIGIBLE_METRICS: (keyof BIAEntry)[] = [
   'muscleLeftLeg',
   'muscleRightLeg',
 ];
+
+// ========================================
+// Strava Types (Running)
+// ========================================
+
+export interface StravaConnection {
+  id: string;
+  userId?: string;
+  accessToken: string;
+  refreshToken: string;
+  tokenExpiresAt: string;
+  athleteId: string;
+  athleteName: string | null;
+  lastSync: string | null;
+  syncStatus: 'connected' | 'error' | 'pending';
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RunningSplit {
+  mile: number;           // Mile number (1, 2, 3, ...)
+  timeSeconds: number;    // Time for this mile in seconds
+  cumulativeSeconds: number; // Total time at this mile
+}
+
+export interface RunningActivity {
+  id: string;
+  connectionId: string;
+  stravaId: string;
+  activityDate: string;
+  name: string | null;
+  distanceMiles: number;
+  durationSeconds: number;
+  elevationGainFeet: number | null;
+  averagePaceSeconds: number | null;  // Seconds per mile
+  splits: RunningSplit[] | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Standard distance milestones for displaying split times
+export const RUNNING_MILESTONES = [
+  { key: '1mi', label: '1 Mile', miles: 1 },
+  { key: '2mi', label: '2 Miles', miles: 2 },
+  { key: '5k', label: '5K', miles: 3.10686 },
+  { key: '5mi', label: '5 Miles', miles: 5 },
+  { key: '10k', label: '10K', miles: 6.21371 },
+  { key: '10mi', label: '10 Miles', miles: 10 },
+  { key: 'half', label: 'Half Marathon', miles: 13.1094 },
+  { key: 'marathon', label: 'Marathon', miles: 26.2188 },
+] as const;
+
+// ========================================
+// Hevy Types (Lifting)
+// ========================================
+
+export interface HevyConnection {
+  id: string;
+  userId?: string;
+  apiKey: string;
+  connectionName: string;
+  lastSync: string | null;
+  syncStatus: 'connected' | 'error' | 'pending';
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BodyPartStats {
+  sets: number;
+  reps: number;
+  volumeLbs?: number;  // Total weight lifted for this body part
+}
+
+export interface LiftingExercise {
+  name: string;
+  bodyPart: string;
+  sets: number;
+  reps: number;
+  weightLbs: number | null;
+}
+
+export interface LiftingWorkout {
+  id: string;
+  connectionId: string;
+  hevyId: string;
+  workoutDate: string;
+  name: string | null;
+  totalSets: number;
+  durationSeconds: number;
+  totalReps: number;
+  totalVolumeLbs: number | null;
+  bodyParts: Record<string, BodyPartStats> | null;
+  exercises: LiftingExercise[] | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Body parts tracked in lifting workouts
+export const BODY_PARTS = [
+  'chest',
+  'back',
+  'shoulders',
+  'biceps',
+  'triceps',
+  'forearms',
+  'core',
+  'quadriceps',
+  'hamstrings',
+  'glutes',
+  'calves',
+] as const;
+
+export type BodyPart = typeof BODY_PARTS[number];
+
+// ========================================
+// Workout Table Types
+// ========================================
+
+export type WorkoutType = 'run' | 'lifting' | 'all';
+export type VolumePeriod = '7' | '30' | '90' | 'YTD' | 'PY';
+
+// Unified workout entry for display in WorkoutTable
+export interface WorkoutEntry {
+  date: string;
+  type: 'run' | 'lifting';
+  runningActivity?: RunningActivity;
+  liftingWorkout?: LiftingWorkout;
+}

@@ -1,0 +1,5 @@
+{
+    "userRules": [
+        "Never open or use the browser. Perform all verification and testing through the terminal using CLI tools like curl, httpie, or similar."
+    ]
+}
