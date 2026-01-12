@@ -3,11 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import FileUpload from '@/components/FileUpload';
 import DataTable from '@/components/DataTable';
-import BodyspecConnect from '@/components/BodyspecConnect';
-import BodyspecSyncButton from '@/components/BodyspecSyncButton';
-import StravaConnect from '@/components/StravaConnect';
-import HevyConnect from '@/components/HevyConnect';
-import WorkoutSyncButton from '@/components/WorkoutSyncButton';
+import IntegrationTabs from '@/components/IntegrationTabs';
 import WorkoutTable from '@/components/WorkoutTable';
 import { BIAEntry, BodyspecScan, RunningActivity, LiftingWorkout } from '@/lib/types';
 import { parsePDFFile } from '@/lib/client-pdf-parser';
@@ -24,7 +20,6 @@ export default function Home() {
   const [hevyConnections, setHevyConnections] = useState<any[]>([]);
   const [runningActivities, setRunningActivities] = useState<RunningActivity[]>([]);
   const [liftingWorkouts, setLiftingWorkouts] = useState<LiftingWorkout[]>([]);
-  const [showWorkoutSection, setShowWorkoutSection] = useState(false);
   const [hiddenScans, setHiddenScans] = useState<Set<string>>(() => {
     // Load from localStorage on init
     if (typeof window !== 'undefined') {
@@ -43,7 +38,6 @@ export default function Home() {
   const [progress, setProgress] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
   const [isInitializing, setIsInitializing] = useState(true);
-  const [showBodyspecSection, setShowBodyspecSection] = useState(false);
 
   const toggleScanVisibility = useCallback((scanId: string) => {
     setHiddenScans(prev => {
@@ -61,13 +55,23 @@ export default function Home() {
 
   const showOnlyLatest = useCallback(() => {
     if (bodyspecScans.length === 0) return;
+
+    // Check if we're currently showing only 1 scan - if so, show all
+    const visibleCount = bodyspecScans.filter(s => !hiddenScans.has(s.id)).length;
+    if (visibleCount === 1) {
+      setHiddenScans(new Set());
+      localStorage.setItem('hiddenBodyspecScans', JSON.stringify([]));
+      return;
+    }
+
+    // Otherwise hide all but latest
     const sortedByDate = [...bodyspecScans].sort((a, b) =>
       new Date(b.scanDate).getTime() - new Date(a.scanDate).getTime()
     );
     const toHide = sortedByDate.slice(1).map(s => s.id);
     setHiddenScans(new Set(toHide));
     localStorage.setItem('hiddenBodyspecScans', JSON.stringify(toHide));
-  }, [bodyspecScans]);
+  }, [bodyspecScans, hiddenScans]);
 
   const visibleScans = bodyspecScans.filter(scan => !hiddenScans.has(scan.id));
 
@@ -325,11 +329,7 @@ export default function Home() {
     }
   }, []);
 
-  const handleDisconnect = useCallback(async (connectionId: string) => {
-    if (!confirm('Are you sure you want to disconnect? This will delete all synced scans.')) {
-      return;
-    }
-
+  const handleBodyspecDisconnect = useCallback(async (connectionId: string) => {
     try {
       const response = await fetch('/api/bodyspec/disconnect', {
         method: 'DELETE',
@@ -389,185 +389,39 @@ export default function Home() {
           )}
         </section>
 
-        {/* Bodyspec Integration Section */}
-        <section className="mb-6 bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden">
-          <button
-            onClick={() => setShowBodyspecSection(!showBodyspecSection)}
-            className="w-full p-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-          >
-            <div className="flex items-center gap-2">
+        {/* Unified Integrations Section */}
+        <IntegrationTabs
+          bodyspecConnections={bodyspecConnections}
+          bodyspecScans={bodyspecScans}
+          hiddenScans={hiddenScans}
+          onBodyspecConnectionChange={loadBodyspecData}
+          onBodyspecDisconnect={handleBodyspecDisconnect}
+          onBodyspecSync={() => loadBodyspecData()}
+          onToggleScanVisibility={toggleScanVisibility}
+          onShowOnlyLatest={showOnlyLatest}
+          stravaConnections={stravaConnections}
+          onStravaConnectionChange={loadWorkoutData}
+          hevyConnections={hevyConnections}
+          onHevyConnectionChange={loadWorkoutData}
+          runningActivities={runningActivities}
+          liftingWorkouts={liftingWorkouts}
+          onWorkoutSync={loadWorkoutData}
+        />
+
+        {/* Workouts Section - show if there are any workouts */}
+        {(runningActivities.length > 0 || liftingWorkouts.length > 0) && (
+          <section className="mb-6 bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800">
+            <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800">
               <h2 className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                Bodyspec DEXA Integration
+                Workouts
               </h2>
             </div>
-            <svg
-              className={`w-5 h-5 text-gray-500 transition-transform ${showBodyspecSection ? 'rotate-180' : ''}`}
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-            </svg>
-          </button>
-
-          {showBodyspecSection && (
-            <div className="border-t border-gray-200 dark:border-gray-800 p-4 space-y-4">
-              {/* Connection status + sync button in one row */}
-              <div className="flex items-center justify-between">
-                <div className="flex-1">
-                  <BodyspecConnect
-                    connections={bodyspecConnections}
-                    onConnectionChange={() => loadBodyspecData({ autoSync: true })}
-                  />
-                </div>
-
-                {bodyspecConnections.length > 0 && (
-                  <div className="flex items-center gap-3">
-                    <BodyspecSyncButton
-                      connection={bodyspecConnections[0]}
-                      onSyncComplete={loadBodyspecData}
-                    />
-                    <button
-                      onClick={() => handleDisconnect(bodyspecConnections[0].id)}
-                      className="text-sm px-3 py-1.5 text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors border border-transparent hover:border-red-200 dark:hover:border-red-800 cursor-pointer"
-                    >
-                      Disconnect
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              {/* Scan list with hide/show toggles */}
-              {bodyspecScans.length > 0 && (
-                <div className="space-y-1">
-                  {bodyspecScans.map((scan) => {
-                    const isHidden = hiddenScans.has(scan.id);
-                    return (
-                      <div
-                        key={scan.id}
-                        className={`flex items-center justify-between py-2 px-1 text-sm border-b border-gray-100 dark:border-gray-800 last:border-0 ${isHidden ? 'opacity-50' : ''}`}
-                      >
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => toggleScanVisibility(scan.id)}
-                            className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors cursor-pointer"
-                            title={isHidden ? 'Show in table' : 'Hide from table'}
-                          >
-                            {isHidden ? (
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-                              </svg>
-                            ) : (
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                              </svg>
-                            )}
-                          </button>
-                          <span className={`font-medium ${isHidden ? 'text-gray-400 dark:text-gray-500' : 'text-gray-900 dark:text-white'}`}>
-                            {new Date(scan.scanDate).toLocaleDateString()}
-                          </span>
-                        </div>
-                        <span className={isHidden ? 'text-gray-400 dark:text-gray-500' : 'text-gray-600 dark:text-gray-400'}>
-                          {scan.data.bodyFatPercentage.toFixed(1)}% • {scan.data.weight.toFixed(0)} lb
-                        </span>
-                      </div>
-                    );
-                  })}
-                  {bodyspecScans.length > 1 && (
-                    <div className="flex items-center justify-between pt-2 mt-1 border-t border-gray-100 dark:border-gray-800">
-                      <span className="text-xs text-gray-500 dark:text-gray-400">
-                        {visibleScans.length} of {bodyspecScans.length} shown
-                      </span>
-                      <button
-                        onClick={() => {
-                          if (visibleScans.length === 1) {
-                            // Show all
-                            setHiddenScans(new Set());
-                            localStorage.setItem('hiddenBodyspecScans', JSON.stringify([]));
-                          } else {
-                            // Only show latest
-                            showOnlyLatest();
-                          }
-                        }}
-                        className="text-xs text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
-                      >
-                        {visibleScans.length === 1 ? 'Show all' : 'Only show latest'}
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-        </section>
-
-        {/* Workout Tracking Section */}
-        <section className="mb-6 bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden">
-          <button
-            onClick={() => setShowWorkoutSection(!showWorkoutSection)}
-            className="w-full p-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-          >
-            <div className="flex items-center gap-2">
-              <h2 className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                Workout Tracking
-              </h2>
-              {(stravaConnections.length > 0 || hevyConnections.length > 0) && (
-                <span className="text-xs text-gray-500 dark:text-gray-400">
-                  {runningActivities.length + liftingWorkouts.length} workouts
-                </span>
-              )}
-            </div>
-            <svg
-              className={`w-5 h-5 text-gray-500 transition-transform ${showWorkoutSection ? 'rotate-180' : ''}`}
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-            </svg>
-          </button>
-
-          {showWorkoutSection && (
-            <div className="border-t border-gray-200 dark:border-gray-800 p-4 space-y-6">
-              {/* Connection cards */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                  <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-3">🏃 Strava (Running)</h3>
-                  <StravaConnect
-                    connections={stravaConnections}
-                    onConnectionChange={loadWorkoutData}
-                  />
-                </div>
-
-                <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                  <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-3">🏋️ Hevy (Lifting)</h3>
-                  <HevyConnect
-                    connections={hevyConnections}
-                    onConnectionChange={loadWorkoutData}
-                  />
-                </div>
-              </div>
-
-              {/* Sync button */}
-              {(stravaConnections.length > 0 || hevyConnections.length > 0) && (
-                <div className="flex justify-end">
-                  <WorkoutSyncButton
-                    stravaConnectionId={stravaConnections[0]?.id}
-                    hevyConnectionId={hevyConnections[0]?.id}
-                    onSyncComplete={loadWorkoutData}
-                  />
-                </div>
-              )}
-
-              {/* Workout table */}
-              <WorkoutTable
-                runningActivities={runningActivities}
-                liftingWorkouts={liftingWorkouts}
-              />
-            </div>
-          )}
-        </section>
+            <WorkoutTable
+              runningActivities={runningActivities}
+              liftingWorkouts={liftingWorkouts}
+            />
+          </section>
+        )}
 
         <section className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800">
           <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800">
