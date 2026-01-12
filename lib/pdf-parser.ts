@@ -35,20 +35,20 @@ export function parseBIAReport(text: string): BIAEntry {
 
   // Fitness score / Health assessment - "93.3points" or "93.3/100"
   const fitnessMatch = text.match(/(?:Health\s*assessment|assessment)\s*(\d+\.?\d*)\s*points/i) ||
-                       text.match(/(\d+\.?\d*)\s*points/i) ||
-                       text.match(/(\d+\.?\d*)\s*\/\s*100/);
+    text.match(/(\d+\.?\d*)\s*points/i) ||
+    text.match(/(\d+\.?\d*)\s*\/\s*100/);
   const fitnessScore = fitnessMatch ? parseFloat(fitnessMatch[1]) : 0;
   console.log('Fitness score:', fitnessScore);
 
-  // Weight - "172Ib" or "Weight\n172lb"
-  const weightMatch = text.match(/Weight\s*\n?\s*(\d{2,3})(?:I|l)?b/i) ||
-                      text.match(/(\d{3})(?:I|l)?b\s*(?:Fat\s*Mass|\n)/i);
+  // Weight - "172Ib", "171.2lb", or "Weight\n172lb"
+  const weightMatch = text.match(/Weight\s*\n?\s*(\d{2,3}\.?\d*)(?:I|l)?b/i) ||
+    text.match(/(\d{3}\.?\d*)(?:I|l)?b\s*(?:Fat\s*Mass|\n)/i);
   const weight = weightMatch ? parseFloat(weightMatch[1]) : 0;
   console.log('Weight:', weight);
 
   // BMI - look after "BMI" or "(kg/m?)" - "23.2"
   const bmiMatch = text.match(/BMI\s*[\s\S]*?(\d{2}\.\d)/i) ||
-                   text.match(/\(kg\/m[²2\?]?\)\s*[\s\S]*?(\d{2}\.\d)/i);
+    text.match(/\(kg\/m[²2\?]?\)\s*[\s\S]*?(\d{2}\.\d)/i);
   const bmi = bmiMatch ? parseFloat(bmiMatch[1]) : 0;
   console.log('BMI:', bmi);
 
@@ -64,19 +64,19 @@ export function parseBIAReport(text: string): BIAEntry {
 
   // Body Water Percentage - "Body Water 60.8%" or "Body Water Percentage 60.8"
   const bodyWaterPercentMatch = text.match(/Body\s*Water\s*Percentage\s*(\d+\.?\d*)/i) ||
-                                text.match(/Body\s*Water\s*(\d{2}\.\d)%/i);
+    text.match(/Body\s*Water\s*(\d{2}\.\d)%/i);
   const bodyWaterPercentage = bodyWaterPercentMatch ? parseFloat(bodyWaterPercentMatch[1]) : 0;
 
   // Body Water absolute in Liters - look for "Body Water 45.2L" or "Body Water 45.2 L" or in composition section
   // Pattern: number followed by L (not lb), typically 30-60 range
   const bodyWaterLMatch = text.match(/Body\s*Water\s*(\d{2}\.?\d*)\s*L(?!b)/i) ||
-                          text.match(/(\d{2}\.\d)\s*L\s*(?=.*Body\s*Water)/i);
+    text.match(/(\d{2}\.\d)\s*L\s*(?=.*Body\s*Water)/i);
   const bodyWater = bodyWaterLMatch ? parseFloat(bodyWaterLMatch[1]) : 0;
   console.log('Body Water:', bodyWater, 'L');
 
   // Protein Percentage - "Protein 19.3%" or "Protein Percentage 19.3"
   const proteinPercentMatch = text.match(/Protein\s*Percentage\s*(\d+\.?\d*)/i) ||
-                              text.match(/Protein\s*(\d{1,2}\.\d)%/i);
+    text.match(/Protein\s*(\d{1,2}\.\d)%/i);
   const proteinPercentage = proteinPercentMatch ? parseFloat(proteinPercentMatch[1]) : 0;
 
   // Protein absolute (lb) - calculate from weight and percentage
@@ -87,7 +87,7 @@ export function parseBIAReport(text: string): BIAEntry {
 
   // Bone Mass Percentage - "Bone Mass 4.2%"
   const boneMassPercentMatch = text.match(/Bone\s*Mass\s*Percentage\s*(\d+\.?\d*)/i) ||
-                               text.match(/Bone\s*Mass\s*(\d\.\d)%/i);
+    text.match(/Bone\s*Mass\s*(\d\.\d)%/i);
   const boneMassPercentage = boneMassPercentMatch ? parseFloat(boneMassPercentMatch[1]) : 0;
 
   // Bone Mass absolute (lb) - calculate from weight and percentage
@@ -115,7 +115,7 @@ export function parseBIAReport(text: string): BIAEntry {
   // Fat-free Body Weight - "Fat-free Body Weight 144 .8|p" or "144.8lb"
   // OCR sometimes puts space before decimal and uses "|p" instead of "lb"
   const fatFreeMassMatch = text.match(/Fat[- ]?free\s*Body\s*Weight\s*(\d+)\s*\.?\s*(\d+)\s*(?:l|I|\|)?[bp]/i) ||
-                           text.match(/Fat[- ]?free\s*Body\s*Weight\s*(\d+\.?\d*)\s*(?:l|I|\|)?b/i);
+    text.match(/Fat[- ]?free\s*Body\s*Weight\s*(\d+\.?\d*)\s*(?:l|I|\|)?b/i);
   let fatFreeMass = 0;
   if (fatFreeMassMatch) {
     if (fatFreeMassMatch[2]) {
@@ -260,11 +260,11 @@ export function parseBIAReport(text: string): BIAEntry {
 
   // Extract muscle balance section
   const muscleBalanceSection = text.match(/Muscle\s*balance[\s\S]*?(?:Segmental\s*fat|Fat\s*analysis)/i) ||
-                               text.match(/Muscle\s*balance[\s\S]*?(?:©\s*Muscle\s*Mass)/i);
+    text.match(/Muscle\s*balance[\s\S]*?(?:©\s*Muscle\s*Mass)/i);
 
   // Extract segmental fat section
   const fatAnalysisSection = text.match(/Segmental\s*fat\s*analysis[\s\S]*?(?:Other\s*Measurements|©\s*Fat)/i) ||
-                             text.match(/Segmental\s*fat[\s\S]*?(?:Other\s*Measurements|©\s*Fat)/i);
+    text.match(/Segmental\s*fat[\s\S]*?(?:Other\s*Measurements|©\s*Fat)/i);
 
   console.log('Muscle section found:', !!muscleBalanceSection);
   console.log('Fat section found:', !!fatAnalysisSection);

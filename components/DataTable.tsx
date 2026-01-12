@@ -39,7 +39,7 @@ function getTrendIndicator(
   }
 
   const diff = current - previous;
-  if (Math.abs(diff) < 0.1) return { color: '', arrow: '' };
+  if (Math.abs(diff) < 0.05) return { color: '', arrow: '' };
 
   const improved = metric.higherIsBetter
     ? diff > 0
@@ -755,7 +755,7 @@ function getSegmentalTrendIndicator(
   }
 
   const diff = current - previous;
-  if (Math.abs(diff) < 0.1) return { color: '', arrow: '' };
+  if (Math.abs(diff) < 0.05) return { color: '', arrow: '' };
 
   const isIncrease = diff > 0;
   const improved = higherIsBetter ? isIncrease : !isIncrease;
