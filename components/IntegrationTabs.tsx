@@ -3,9 +3,16 @@
 import { useState } from 'react';
 import { BodyspecConnection, BodyspecScan, RunningActivity, LiftingWorkout } from '@/lib/types';
 
-type IntegrationType = 'bodyspec' | 'strava' | 'hevy';
+import FileUpload from './FileUpload';
+
+type IntegrationType = 'bia-scale' | 'bodyspec' | 'strava' | 'hevy';
 
 interface IntegrationTabsProps {
+    // BIA Scale (Upload)
+    onUpload: (files: File[]) => Promise<void>;
+    isUploading: boolean;
+    uploadProgress: string;
+    uploadError: string | null;
     // Bodyspec
     bodyspecConnections: Omit<BodyspecConnection, 'accessToken' | 'refreshToken'>[];
     bodyspecScans: BodyspecScan[];
@@ -28,6 +35,10 @@ interface IntegrationTabsProps {
 }
 
 export default function IntegrationTabs({
+    onUpload,
+    isUploading,
+    uploadProgress,
+    uploadError,
     bodyspecConnections,
     bodyspecScans,
     hiddenScans,
@@ -44,10 +55,11 @@ export default function IntegrationTabs({
     liftingWorkouts,
     onWorkoutSync,
 }: IntegrationTabsProps) {
-    const [isExpanded, setIsExpanded] = useState(false);
-    const [activeTab, setActiveTab] = useState<IntegrationType>('bodyspec');
+    const [isExpanded, setIsExpanded] = useState(true);
+    const [activeTab, setActiveTab] = useState<IntegrationType>('bia-scale');
 
-    const tabs: { id: IntegrationType; label: string; isConnected: boolean }[] = [
+    const tabs: { id: IntegrationType; label: string; isConnected?: boolean }[] = [
+        { id: 'bia-scale', label: 'BIA Scale' },
         { id: 'bodyspec', label: 'Bodyspec', isConnected: bodyspecConnections.length > 0 },
         { id: 'strava', label: 'Strava', isConnected: stravaConnections.length > 0 },
         { id: 'hevy', label: 'Hevy', isConnected: hevyConnections.length > 0 },
@@ -80,12 +92,12 @@ export default function IntegrationTabs({
             {isExpanded && (
                 <div className="border-t border-gray-200 dark:border-gray-800 p-4 space-y-4">
                     {/* Segmented Control */}
-                    <div className="flex gap-1 p-1 bg-gray-100 dark:bg-gray-800 rounded-lg">
+                    <div className="flex gap-1 p-1 bg-gray-100 dark:bg-gray-800 rounded-lg overflow-x-auto">
                         {tabs.map((tab) => (
                             <button
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id)}
-                                className={`flex-1 px-3 py-2 text-sm font-medium rounded-md transition-colors relative ${activeTab === tab.id
+                                className={`flex-1 min-w-[100px] px-3 py-2 text-sm font-medium rounded-md transition-colors relative whitespace-nowrap ${activeTab === tab.id
                                     ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm'
                                     : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
                                     }`}
@@ -102,6 +114,20 @@ export default function IntegrationTabs({
 
                     {/* Tab Content */}
                     <div className="min-h-[120px]">
+                        {activeTab === 'bia-scale' && (
+                            <div className="space-y-4">
+                                <FileUpload
+                                    onUpload={onUpload}
+                                    isLoading={isUploading}
+                                    progress={uploadProgress}
+                                />
+                                {uploadError && (
+                                    <div className="p-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded text-sm text-red-700 dark:text-red-400">
+                                        {uploadError}
+                                    </div>
+                                )}
+                            </div>
+                        )}
                         {activeTab === 'bodyspec' && (
                             <BodyspecContent
                                 connections={bodyspecConnections}

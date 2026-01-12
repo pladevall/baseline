@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import FileUpload from '@/components/FileUpload';
+// FileUpload import removed as it is now used inside IntegrationTabs
 import DataTable from '@/components/DataTable';
 import IntegrationTabs from '@/components/IntegrationTabs';
 import WorkoutTable from '@/components/WorkoutTable';
@@ -376,21 +376,12 @@ export default function Home() {
           <ThemeToggle />
         </header>
 
-        <section className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-4 mb-6">
-          <FileUpload
-            onUpload={handleUpload}
-            isLoading={isLoading}
-            progress={progress}
-          />
-          {error && (
-            <div className="mt-3 p-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded text-sm text-red-700 dark:text-red-400">
-              {error}
-            </div>
-          )}
-        </section>
-
         {/* Unified Integrations Section */}
         <IntegrationTabs
+          onUpload={handleUpload}
+          isUploading={isLoading}
+          uploadProgress={progress}
+          uploadError={error}
           bodyspecConnections={bodyspecConnections}
           bodyspecScans={bodyspecScans}
           hiddenScans={hiddenScans}
