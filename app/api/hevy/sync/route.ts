@@ -1,6 +1,6 @@
 /**
  * Hevy Sync API
- * POST - Fetch new workouts from Hevy and save to database
+ * POST - Fetch all workouts from Hevy and save to database
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -9,7 +9,6 @@ import {
     getHevyConnection,
     updateHevySyncStatus,
     saveLiftingWorkouts,
-    getLastWorkoutDate,
 } from '@/lib/supabase-hevy';
 
 export async function POST(request: NextRequest) {
@@ -40,23 +39,16 @@ export async function POST(request: NextRequest) {
             // Create Hevy client
             const client = new HevyClient(connection.apiKey);
 
-            // Get the last workout date to fetch only new workouts
-            const lastWorkoutDate = await getLastWorkoutDate(connectionId);
-
-            // Fetch workouts since last sync (or all if first sync)
-            // Subtract a day to account for timezone issues
-            const since = lastWorkoutDate
-                ? new Date(lastWorkoutDate.getTime() - 24 * 60 * 60 * 1000)
-                : undefined;
-
-            const hevyWorkouts = await client.getAllWorkouts(since);
+            // Always fetch ALL workouts - the upsert will update existing records
+            // This ensures we always have the latest data including sets/reps/bodyparts
+            const hevyWorkouts = await client.getAllWorkouts();
 
             // Convert workouts
             const convertedWorkouts = await Promise.all(
                 hevyWorkouts.map(w => convertHevyWorkout(w, client))
             );
 
-            // Save to database
+            // Save to database (upsert updates existing records)
             const savedWorkouts = await saveLiftingWorkouts(connectionId, convertedWorkouts);
 
             // Update sync status

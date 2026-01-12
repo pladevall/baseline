@@ -199,221 +199,282 @@ export default function WorkoutTable({ runningActivities, liftingWorkouts }: Wor
     }
 
     return (
-        <div className="space-y-4">
-            {/* Controls */}
-            <div className="flex flex-wrap items-center gap-4">
-                {/* Workout type toggle */}
-                <div className="flex bg-gray-100 dark:bg-gray-800 rounded-md p-1">
-                    {(['run', 'lifting', 'all'] as WorkoutType[]).map(type => (
-                        <button
-                            key={type}
-                            onClick={() => setWorkoutType(type)}
-                            className={`px-3 py-1 text-sm font-medium rounded transition-colors ${workoutType === type
-                                    ? 'bg-white dark:bg-gray-700 shadow-sm'
-                                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
-                                }`}
-                        >
-                            {type === 'run' ? '🏃 Run' : type === 'lifting' ? '🏋️ Lift' : 'All'}
-                        </button>
-                    ))}
-                </div>
-
-                {/* Volume period toggle */}
-                <div className="flex items-center gap-2">
-                    <span className="text-sm text-gray-600 dark:text-gray-400">Volume:</span>
-                    <div className="flex bg-gray-100 dark:bg-gray-800 rounded-md p-1">
-                        {(['7', '30', '90', 'YTD', 'PY'] as VolumePeriod[]).map(period => (
-                            <button
-                                key={period}
-                                onClick={() => setVolumePeriod(period)}
-                                className={`px-2 py-1 text-xs font-medium rounded transition-colors ${volumePeriod === period
-                                        ? 'bg-white dark:bg-gray-700 shadow-sm'
-                                        : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
-                                    }`}
-                            >
-                                {period === 'YTD' || period === 'PY' ? period : `${period}d`}
-                            </button>
-                        ))}
-                    </div>
-                </div>
-            </div>
-
-            {/* Table */}
-            <div className="overflow-x-auto">
-                <table className="min-w-full text-sm">
-                    <thead>
-                        <tr className="border-b border-gray-200 dark:border-gray-700">
-                            <th className="sticky left-0 bg-white dark:bg-gray-900 px-3 py-2 text-left font-medium text-gray-700 dark:text-gray-300">
-                                Metric
-                            </th>
-                            {displayDates.map(date => (
-                                <th key={date} className="px-3 py-2 text-center font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">
+        <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+                <thead>
+                    <tr className="border-b border-gray-200 dark:border-gray-800">
+                        <th className="sticky left-0 z-10 bg-white dark:bg-gray-900 px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[140px]">
+                            Metric
+                        </th>
+                        <th className="px-2 py-2 text-center min-w-[80px] border-l border-gray-100 dark:border-gray-800/50 bg-blue-50/50 dark:bg-blue-900/20">
+                            <div className="flex flex-col items-center gap-1">
+                                <span className="text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase">Volume</span>
+                                <div className="flex gap-0.5">
+                                    {(['7', '30', '90', 'YTD', 'PY'] as VolumePeriod[]).map(period => (
+                                        <button
+                                            key={period}
+                                            onClick={() => setVolumePeriod(period)}
+                                            className={`px-1.5 py-0.5 text-[9px] rounded transition-colors ${volumePeriod === period
+                                                ? 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 font-medium'
+                                                : 'text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
+                                                }`}
+                                        >
+                                            {period === 'YTD' || period === 'PY' ? period : `${period}d`}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </th>
+                        {displayDates.map(date => (
+                            <th key={date} className="px-3 py-2 text-center min-w-[80px] border-l border-gray-100 dark:border-gray-800/50">
+                                <span className="text-xs font-medium text-gray-900 dark:text-gray-100">
                                     {formatDateHeader(date)}
-                                </th>
-                            ))}
-                            <th className="px-3 py-2 text-center font-medium text-gray-700 dark:text-gray-300 bg-blue-50 dark:bg-blue-900/20">
-                                Vol ({volumePeriod === 'YTD' || volumePeriod === 'PY' ? volumePeriod : `${volumePeriod}d`})
+                                </span>
                             </th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {/* Lifting Section */}
-                        {workoutType !== 'run' && liftingWorkouts.length > 0 && (
-                            <>
-                                <tr className="bg-purple-50 dark:bg-purple-900/20">
-                                    <td colSpan={displayDates.length + 2} className="px-3 py-1 font-semibold text-purple-700 dark:text-purple-300">
-                                        🏋️ Lifting
-                                    </td>
-                                </tr>
-                                {/* Sets */}
-                                <tr className="border-b border-gray-100 dark:border-gray-800">
-                                    <td className="sticky left-0 bg-white dark:bg-gray-900 px-3 py-1.5 text-gray-600 dark:text-gray-400">Sets</td>
-                                    {displayDates.map(date => {
-                                        const workout = liftingByDate.get(date);
-                                        return (
-                                            <td key={date} className="px-3 py-1.5 text-center">
-                                                {workout ? workout.totalSets : '—'}
-                                            </td>
-                                        );
-                                    })}
-                                    <td className="px-3 py-1.5 text-center font-medium bg-blue-50 dark:bg-blue-900/20">
-                                        {liftingVolume.totalSets}
-                                    </td>
-                                </tr>
-                                {/* Duration */}
-                                <tr className="border-b border-gray-100 dark:border-gray-800">
-                                    <td className="sticky left-0 bg-white dark:bg-gray-900 px-3 py-1.5 text-gray-600 dark:text-gray-400">Duration</td>
-                                    {displayDates.map(date => {
-                                        const workout = liftingByDate.get(date);
-                                        return (
-                                            <td key={date} className="px-3 py-1.5 text-center">
-                                                {workout ? formatDuration(workout.durationSeconds) : '—'}
-                                            </td>
-                                        );
-                                    })}
-                                    <td className="px-3 py-1.5 text-center font-medium bg-blue-50 dark:bg-blue-900/20">
-                                        {formatDuration(liftingVolume.totalDuration)}
-                                    </td>
-                                </tr>
-                                {/* Reps */}
-                                <tr className="border-b border-gray-100 dark:border-gray-800">
-                                    <td className="sticky left-0 bg-white dark:bg-gray-900 px-3 py-1.5 text-gray-600 dark:text-gray-400">Reps</td>
-                                    {displayDates.map(date => {
-                                        const workout = liftingByDate.get(date);
-                                        return (
-                                            <td key={date} className="px-3 py-1.5 text-center">
-                                                {workout ? workout.totalReps.toLocaleString() : '—'}
-                                            </td>
-                                        );
-                                    })}
-                                    <td className="px-3 py-1.5 text-center font-medium bg-blue-50 dark:bg-blue-900/20">
-                                        {liftingVolume.totalReps.toLocaleString()}
-                                    </td>
-                                </tr>
-                                {/* Body parts */}
-                                {activeBodyParts.map(part => (
-                                    <tr key={part} className="border-b border-gray-100 dark:border-gray-800">
-                                        <td className="sticky left-0 bg-white dark:bg-gray-900 px-3 py-1.5 text-gray-600 dark:text-gray-400 capitalize">
-                                            {part}
-                                        </td>
-                                        {displayDates.map(date => {
-                                            const workout = liftingByDate.get(date);
-                                            const sets = workout?.bodyParts?.[part]?.sets;
-                                            return (
-                                                <td key={date} className="px-3 py-1.5 text-center">
-                                                    {sets ? sets : '—'}
-                                                </td>
-                                            );
-                                        })}
-                                        <td className="px-3 py-1.5 text-center font-medium bg-blue-50 dark:bg-blue-900/20">
-                                            {liftingVolume.bodyPartTotals[part] || '—'}
-                                        </td>
-                                    </tr>
+                        ))}
+                    </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100 dark:divide-gray-800/50">
+                    {/* Workout type filter row */}
+                    <tr className="bg-gray-50 dark:bg-gray-900/50">
+                        <td className="sticky left-0 z-10 bg-gray-50 dark:bg-gray-900/50 px-4 py-2">
+                            <div className="flex gap-0.5">
+                                {(['all', 'lifting', 'run'] as WorkoutType[]).map(type => (
+                                    <button
+                                        key={type}
+                                        onClick={() => setWorkoutType(type)}
+                                        className={`px-2 py-0.5 text-[10px] rounded transition-colors ${workoutType === type
+                                            ? 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 font-medium'
+                                            : 'text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
+                                            }`}
+                                    >
+                                        {type === 'run' ? '🏃 Run' : type === 'lifting' ? '🏋️ Lift' : 'All'}
+                                    </button>
                                 ))}
-                            </>
-                        )}
+                            </div>
+                        </td>
+                        <td className="border-l border-gray-100 dark:border-gray-800/50 bg-blue-50/30 dark:bg-blue-900/10" />
+                        {displayDates.map(date => (
+                            <td key={date} className="border-l border-gray-100 dark:border-gray-800/50" />
+                        ))}
+                    </tr>
 
-                        {/* Running Section */}
-                        {workoutType !== 'lifting' && runningActivities.length > 0 && (
-                            <>
-                                <tr className="bg-orange-50 dark:bg-orange-900/20">
-                                    <td colSpan={displayDates.length + 2} className="px-3 py-1 font-semibold text-orange-700 dark:text-orange-300">
-                                        🏃 Running
-                                    </td>
-                                </tr>
-                                {/* Miles */}
-                                <tr className="border-b border-gray-100 dark:border-gray-800">
-                                    <td className="sticky left-0 bg-white dark:bg-gray-900 px-3 py-1.5 text-gray-600 dark:text-gray-400">Miles</td>
-                                    {displayDates.map(date => {
-                                        const activity = runningByDate.get(date);
-                                        return (
-                                            <td key={date} className="px-3 py-1.5 text-center">
-                                                {activity ? activity.distanceMiles.toFixed(1) : '—'}
-                                            </td>
-                                        );
-                                    })}
-                                    <td className="px-3 py-1.5 text-center font-medium bg-blue-50 dark:bg-blue-900/20">
-                                        {runningVolume.totalMiles.toFixed(1)}
-                                    </td>
-                                </tr>
-                                {/* Duration */}
-                                <tr className="border-b border-gray-100 dark:border-gray-800">
-                                    <td className="sticky left-0 bg-white dark:bg-gray-900 px-3 py-1.5 text-gray-600 dark:text-gray-400">Duration</td>
-                                    {displayDates.map(date => {
-                                        const activity = runningByDate.get(date);
-                                        return (
-                                            <td key={date} className="px-3 py-1.5 text-center">
-                                                {activity ? formatDuration(activity.durationSeconds) : '—'}
-                                            </td>
-                                        );
-                                    })}
-                                    <td className="px-3 py-1.5 text-center font-medium bg-blue-50 dark:bg-blue-900/20">
-                                        {formatDuration(runningVolume.totalDuration)}
-                                    </td>
-                                </tr>
-                                {/* Pace */}
-                                <tr className="border-b border-gray-100 dark:border-gray-800">
-                                    <td className="sticky left-0 bg-white dark:bg-gray-900 px-3 py-1.5 text-gray-600 dark:text-gray-400">Avg Pace</td>
-                                    {displayDates.map(date => {
-                                        const activity = runningByDate.get(date);
-                                        return (
-                                            <td key={date} className="px-3 py-1.5 text-center">
-                                                {activity?.averagePaceSeconds ? `${formatPace(activity.averagePaceSeconds)}/mi` : '—'}
-                                            </td>
-                                        );
-                                    })}
-                                    <td className="px-3 py-1.5 text-center bg-blue-50 dark:bg-blue-900/20">
-                                        —
-                                    </td>
-                                </tr>
-                                {/* Split times at milestones */}
-                                {activeMilestones.map(milestone => (
-                                    <tr key={milestone.key} className="border-b border-gray-100 dark:border-gray-800">
-                                        <td className="sticky left-0 bg-white dark:bg-gray-900 px-3 py-1.5 text-gray-600 dark:text-gray-400">
-                                            {milestone.label}
+                    {/* Lifting Section */}
+                    {workoutType !== 'run' && liftingWorkouts.length > 0 && (
+                        <>
+                            <tr
+                                className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+                            >
+                                <td className="sticky left-0 z-10 bg-purple-50/50 dark:bg-purple-900/20 px-4 py-2 text-xs font-medium text-purple-700 dark:text-purple-300">
+                                    <span className="inline-flex items-center gap-1.5">
+                                        🏋️ Lifting
+                                    </span>
+                                </td>
+                                <td className="bg-purple-50/30 dark:bg-purple-900/10 border-l border-gray-100 dark:border-gray-800/50" />
+                                {displayDates.map(date => (
+                                    <td key={date} className="bg-purple-50/30 dark:bg-purple-900/10 border-l border-gray-100 dark:border-gray-800/50" />
+                                ))}
+                            </tr>
+                            {/* Sets */}
+                            <tr className="hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors">
+                                <td className="sticky left-0 z-10 bg-white dark:bg-gray-900 px-4 py-1.5 text-xs text-gray-600 dark:text-gray-300">
+                                    Sets
+                                </td>
+                                <td className="px-2 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50 bg-blue-50/30 dark:bg-blue-900/10">
+                                    <span className="text-xs tabular-nums font-medium text-gray-900 dark:text-gray-100">
+                                        {liftingVolume.totalSets}
+                                    </span>
+                                </td>
+                                {displayDates.map(date => {
+                                    const workout = liftingByDate.get(date);
+                                    return (
+                                        <td key={date} className="px-3 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50">
+                                            <span className="text-xs tabular-nums font-medium text-gray-900 dark:text-gray-100">
+                                                {workout ? workout.totalSets : '—'}
+                                            </span>
                                         </td>
-                                        {displayDates.map(date => {
-                                            const activity = runningByDate.get(date);
-                                            if (!activity || activity.distanceMiles < milestone.miles * 0.95) {
-                                                return <td key={date} className="px-3 py-1.5 text-center">—</td>;
-                                            }
-                                            const time = getTimeAtMile(activity.splits, milestone.miles);
+                                    );
+                                })}
+                            </tr>
+                            {/* Duration */}
+                            <tr className="hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors">
+                                <td className="sticky left-0 z-10 bg-white dark:bg-gray-900 px-4 py-1.5 text-xs text-gray-600 dark:text-gray-300">
+                                    Duration
+                                </td>
+                                <td className="px-2 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50 bg-blue-50/30 dark:bg-blue-900/10">
+                                    <span className="text-xs tabular-nums font-medium text-gray-900 dark:text-gray-100">
+                                        {formatDuration(liftingVolume.totalDuration)}
+                                    </span>
+                                </td>
+                                {displayDates.map(date => {
+                                    const workout = liftingByDate.get(date);
+                                    return (
+                                        <td key={date} className="px-3 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50">
+                                            <span className="text-xs tabular-nums font-medium text-gray-900 dark:text-gray-100">
+                                                {workout ? formatDuration(workout.durationSeconds) : '—'}
+                                            </span>
+                                        </td>
+                                    );
+                                })}
+                            </tr>
+                            {/* Reps */}
+                            <tr className="hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors">
+                                <td className="sticky left-0 z-10 bg-white dark:bg-gray-900 px-4 py-1.5 text-xs text-gray-600 dark:text-gray-300">
+                                    Reps
+                                </td>
+                                <td className="px-2 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50 bg-blue-50/30 dark:bg-blue-900/10">
+                                    <span className="text-xs tabular-nums font-medium text-gray-900 dark:text-gray-100">
+                                        {liftingVolume.totalReps.toLocaleString()}
+                                    </span>
+                                </td>
+                                {displayDates.map(date => {
+                                    const workout = liftingByDate.get(date);
+                                    return (
+                                        <td key={date} className="px-3 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50">
+                                            <span className="text-xs tabular-nums font-medium text-gray-900 dark:text-gray-100">
+                                                {workout ? workout.totalReps.toLocaleString() : '—'}
+                                            </span>
+                                        </td>
+                                    );
+                                })}
+                            </tr>
+                            {/* Body parts */}
+                            {activeBodyParts.map(part => (
+                                <tr key={part} className="hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors">
+                                    <td className="sticky left-0 z-10 bg-white dark:bg-gray-900 px-4 py-1.5 text-xs text-gray-600 dark:text-gray-300 capitalize">
+                                        {part}
+                                    </td>
+                                    <td className="px-2 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50 bg-blue-50/30 dark:bg-blue-900/10">
+                                        <span className="text-xs tabular-nums font-medium text-gray-900 dark:text-gray-100">
+                                            {liftingVolume.bodyPartTotals[part] || '—'}
+                                        </span>
+                                    </td>
+                                    {displayDates.map(date => {
+                                        const workout = liftingByDate.get(date);
+                                        const sets = workout?.bodyParts?.[part]?.sets;
+                                        return (
+                                            <td key={date} className="px-3 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50">
+                                                <span className="text-xs tabular-nums font-medium text-gray-900 dark:text-gray-100">
+                                                    {sets ? sets : '—'}
+                                                </span>
+                                            </td>
+                                        );
+                                    })}
+                                </tr>
+                            ))}
+                        </>
+                    )}
+
+                    {/* Running Section */}
+                    {workoutType !== 'lifting' && runningActivities.length > 0 && (
+                        <>
+                            <tr
+                                className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+                            >
+                                <td className="sticky left-0 z-10 bg-orange-50/50 dark:bg-orange-900/20 px-4 py-2 text-xs font-medium text-orange-700 dark:text-orange-300">
+                                    <span className="inline-flex items-center gap-1.5">
+                                        🏃 Running
+                                    </span>
+                                </td>
+                                <td className="bg-orange-50/30 dark:bg-orange-900/10 border-l border-gray-100 dark:border-gray-800/50" />
+                                {displayDates.map(date => (
+                                    <td key={date} className="bg-orange-50/30 dark:bg-orange-900/10 border-l border-gray-100 dark:border-gray-800/50" />
+                                ))}
+                            </tr>
+                            {/* Miles */}
+                            <tr className="hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors">
+                                <td className="sticky left-0 z-10 bg-white dark:bg-gray-900 px-4 py-1.5 text-xs text-gray-600 dark:text-gray-300">
+                                    Miles
+                                </td>
+                                <td className="px-2 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50 bg-blue-50/30 dark:bg-blue-900/10">
+                                    <span className="text-xs tabular-nums font-medium text-gray-900 dark:text-gray-100">
+                                        {runningVolume.totalMiles.toFixed(1)}
+                                    </span>
+                                </td>
+                                {displayDates.map(date => {
+                                    const activity = runningByDate.get(date);
+                                    return (
+                                        <td key={date} className="px-3 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50">
+                                            <span className="text-xs tabular-nums font-medium text-gray-900 dark:text-gray-100">
+                                                {activity ? activity.distanceMiles.toFixed(1) : '—'}
+                                            </span>
+                                        </td>
+                                    );
+                                })}
+                            </tr>
+                            {/* Duration */}
+                            <tr className="hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors">
+                                <td className="sticky left-0 z-10 bg-white dark:bg-gray-900 px-4 py-1.5 text-xs text-gray-600 dark:text-gray-300">
+                                    Duration
+                                </td>
+                                <td className="px-2 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50 bg-blue-50/30 dark:bg-blue-900/10">
+                                    <span className="text-xs tabular-nums font-medium text-gray-900 dark:text-gray-100">
+                                        {formatDuration(runningVolume.totalDuration)}
+                                    </span>
+                                </td>
+                                {displayDates.map(date => {
+                                    const activity = runningByDate.get(date);
+                                    return (
+                                        <td key={date} className="px-3 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50">
+                                            <span className="text-xs tabular-nums font-medium text-gray-900 dark:text-gray-100">
+                                                {activity ? formatDuration(activity.durationSeconds) : '—'}
+                                            </span>
+                                        </td>
+                                    );
+                                })}
+                            </tr>
+                            {/* Pace */}
+                            <tr className="hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors">
+                                <td className="sticky left-0 z-10 bg-white dark:bg-gray-900 px-4 py-1.5 text-xs text-gray-600 dark:text-gray-300">
+                                    Avg Pace
+                                </td>
+                                <td className="px-2 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50 bg-blue-50/30 dark:bg-blue-900/10">
+                                    <span className="text-xs tabular-nums font-medium text-gray-400">—</span>
+                                </td>
+                                {displayDates.map(date => {
+                                    const activity = runningByDate.get(date);
+                                    return (
+                                        <td key={date} className="px-3 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50">
+                                            <span className="text-xs tabular-nums font-medium text-gray-900 dark:text-gray-100">
+                                                {activity?.averagePaceSeconds ? `${formatPace(activity.averagePaceSeconds)}/mi` : '—'}
+                                            </span>
+                                        </td>
+                                    );
+                                })}
+                            </tr>
+                            {/* Split times at milestones */}
+                            {activeMilestones.map(milestone => (
+                                <tr key={milestone.key} className="hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors">
+                                    <td className="sticky left-0 z-10 bg-white dark:bg-gray-900 px-4 py-1.5 text-xs text-gray-600 dark:text-gray-300">
+                                        {milestone.label}
+                                    </td>
+                                    <td className="px-2 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50 bg-blue-50/30 dark:bg-blue-900/10">
+                                        <span className="text-xs tabular-nums font-medium text-gray-400">—</span>
+                                    </td>
+                                    {displayDates.map(date => {
+                                        const activity = runningByDate.get(date);
+                                        if (!activity || activity.distanceMiles < milestone.miles * 0.95) {
                                             return (
-                                                <td key={date} className="px-3 py-1.5 text-center">
-                                                    {time ? formatDuration(Math.round(time)) : '—'}
+                                                <td key={date} className="px-3 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50">
+                                                    <span className="text-xs tabular-nums font-medium text-gray-900 dark:text-gray-100">—</span>
                                                 </td>
                                             );
-                                        })}
-                                        <td className="px-3 py-1.5 text-center bg-blue-50 dark:bg-blue-900/20">
-                                            —
-                                        </td>
-                                    </tr>
-                                ))}
-                            </>
-                        )}
-                    </tbody>
-                </table>
-            </div>
+                                        }
+                                        const time = getTimeAtMile(activity.splits, milestone.miles);
+                                        return (
+                                            <td key={date} className="px-3 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50">
+                                                <span className="text-xs tabular-nums font-medium text-gray-900 dark:text-gray-100">
+                                                    {time ? formatDuration(Math.round(time)) : '—'}
+                                                </span>
+                                            </td>
+                                        );
+                                    })}
+                                </tr>
+                            ))}
+                        </>
+                    )}
+                </tbody>
+            </table>
         </div>
     );
 }
