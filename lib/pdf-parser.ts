@@ -41,8 +41,11 @@ export function parseBIAReport(text: string): BIAEntry {
   console.log('Fitness score:', fitnessScore);
 
   // Weight - "172Ib", "171.2lb", or "Weight\n172lb"
-  const weightMatch = text.match(/Weight\s*\n?\s*(\d{2,3}\.?\d*)(?:I|l)?b/i) ||
-    text.match(/(\d{3}\.?\d*)(?:I|l)?b\s*(?:Fat\s*Mass|\n)/i);
+  // Avoid matching "Normal weight" from the recommendations section
+  // Look for standalone weight or weight in composition section
+  const weightMatch = text.match(/(?<!Normal\s)Weight\s*\n?\s*(\d{2,3}\.?\d*)(?:I|l)?b/i) ||
+    text.match(/(\d{3}\.?\d*)(?:I|l)?b\s*Fat\s*Mass/i) ||
+    text.match(/Body\s*Composition[\s\S]{0,50}?(\d{3}\.?\d*)(?:I|l)?b/i);
   const weight = weightMatch ? parseFloat(weightMatch[1]) : 0;
   console.log('Weight:', weight);
 
