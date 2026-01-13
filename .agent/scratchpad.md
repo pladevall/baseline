@@ -32,13 +32,26 @@
 - All cells styled with green background (`bg-green-50/30 dark:bg-green-900/10`)
 - TypeScript compiles without errors
 
+### Iteration 3: Wired up workout generators to display in Next column
+- Imported workout generator functions in WorkoutTable.tsx:
+  - `generateLiftingWorkout`, `generateRunningWorkout`, `GeneratedLiftingWorkout`, `GeneratedRunningWorkout`, `getWeeklySetsPerMuscleGroup`
+- Added `useMemo` hooks to generate workouts:
+  - `nextLiftingWorkout` - generated lifting workout
+  - `nextRunningWorkout` - generated running workout
+  - `weeklySetsPerMuscleGroup` - for tracking weekly sets
+- Updated Lifting Sets "Next" cell:
+  - Shows total sets count with green styling
+  - Tooltip displays workout name and all exercises with sets/weight/reps
+- Updated Running Miles "Next" cell:
+  - Shows distance with green styling
+  - Tooltip displays workout name, distance, target pace, estimated time, and notes
+- TypeScript compiles without errors
+
 ## Remaining Tasks
 
-1. Import and call workout generators in WorkoutTable.tsx
-2. Display generated workout info in the "Next" column cells
-3. Add "Push to Hevy" button integration
-4. Test the full UI displays correctly
-5. Update PROMPT.md with progress
+1. Add "Push to Hevy" button integration (Phase 3)
+2. Optionally populate more Next cells (Duration, Pace, etc.) if desired
+3. Update PROMPT.md with progress checkboxes
 
 ## Technical Notes
 
@@ -46,3 +59,4 @@
 - Fixed columns are now: Goal, Workload, Avg, Trend, Next (5 columns)
 - Each row uses `TimeSeriesRow` with `fixedContent` for the fixed columns
 - `fixedCellsCount={5}` in all SectionHeaderRow components
+- Generated workouts are memoized based on workout data

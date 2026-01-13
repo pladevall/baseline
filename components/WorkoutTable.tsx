@@ -8,6 +8,7 @@ import GoalEditor from './GoalEditor';
 import Tooltip from './Tooltip';
 import { MilestoneBadge } from './MilestoneBadge';
 import { calculateLiftingMilestones, calculateRunningMilestones, ExerciseMilestones, RunningMilestone } from '@/lib/milestones';
+import { generateLiftingWorkout, generateRunningWorkout, GeneratedLiftingWorkout, GeneratedRunningWorkout, getWeeklySetsPerMuscleGroup } from '@/lib/workout-generator';
 
 interface WorkoutTableProps {
     runningActivities: RunningActivity[];
@@ -152,6 +153,11 @@ export default function WorkoutTable({ runningActivities, liftingWorkouts, goals
     // Calculate milestones
     const liftingMilestones = useMemo(() => calculateLiftingMilestones(liftingWorkouts), [liftingWorkouts]);
     const runningMilestones = useMemo(() => calculateRunningMilestones(runningActivities), [runningActivities]);
+
+    // Generate next workouts
+    const nextLiftingWorkout = useMemo<GeneratedLiftingWorkout | null>(() => generateLiftingWorkout(liftingWorkouts), [liftingWorkouts]);
+    const nextRunningWorkout = useMemo<GeneratedRunningWorkout | null>(() => generateRunningWorkout(runningActivities), [runningActivities]);
+    const weeklySetsPerMuscleGroup = useMemo(() => getWeeklySetsPerMuscleGroup(liftingWorkouts), [liftingWorkouts]);
 
     const liftingByDate = useMemo(() => {
         const map = new Map<string, LiftingWorkout>();
@@ -1283,7 +1289,28 @@ export default function WorkoutTable({ runningActivities, liftingWorkouts, goals
                                         })()}
                                     </td>
                                     <td className="px-2 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50 bg-green-50/30 dark:bg-green-900/10">
-                                        <span className="text-xs text-gray-300 dark:text-gray-700">—</span>
+                                        {nextLiftingWorkout ? (
+                                            <Tooltip content={
+                                                <div className="text-left text-xs max-w-xs">
+                                                    <div className="font-medium mb-2 text-green-400">{nextLiftingWorkout.name}</div>
+                                                    <div className="space-y-1.5">
+                                                        {nextLiftingWorkout.exercises.slice(0, 6).map((ex, i) => (
+                                                            <div key={i} className="text-gray-300">
+                                                                <span className="font-medium">{ex.name}</span>
+                                                                <span className="text-gray-500"> • {ex.sets.length} sets @ {ex.sets[0]?.weightLbs}lb x {ex.sets[0]?.targetReps}</span>
+                                                            </div>
+                                                        ))}
+                                                        {nextLiftingWorkout.exercises.length > 6 && (
+                                                            <div className="text-gray-500 italic">+{nextLiftingWorkout.exercises.length - 6} more...</div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            }>
+                                                <span className="text-xs tabular-nums font-medium cursor-help text-green-600 dark:text-green-400">{nextLiftingWorkout.totalSets}</span>
+                                            </Tooltip>
+                                        ) : (
+                                            <span className="text-xs text-gray-300 dark:text-gray-700">—</span>
+                                        )}
                                     </td>
                                 </>
                             }
@@ -1797,7 +1824,31 @@ export default function WorkoutTable({ runningActivities, liftingWorkouts, goals
                                         })()}
                                     </td>
                                     <td className="px-2 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50 bg-green-50/30 dark:bg-green-900/10">
-                                        <span className="text-xs text-gray-300 dark:text-gray-700">—</span>
+                                        {nextRunningWorkout ? (
+                                            <Tooltip content={
+                                                <div className="text-left text-xs max-w-xs">
+                                                    <div className="font-medium mb-2 text-green-400">{nextRunningWorkout.name}</div>
+                                                    <div className="space-y-1">
+                                                        <div className="text-gray-300">
+                                                            <span className="text-gray-500">Distance:</span> {nextRunningWorkout.distanceMiles.toFixed(1)} mi
+                                                        </div>
+                                                        <div className="text-gray-300">
+                                                            <span className="text-gray-500">Target Pace:</span> {formatPace(nextRunningWorkout.targetPaceSeconds)}/mi
+                                                        </div>
+                                                        <div className="text-gray-300">
+                                                            <span className="text-gray-500">Est. Time:</span> {formatDuration(nextRunningWorkout.estimatedDurationSeconds)}
+                                                        </div>
+                                                        {nextRunningWorkout.notes && (
+                                                            <div className="text-gray-400 text-xs mt-2 pt-2 border-t border-gray-700">{nextRunningWorkout.notes}</div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            }>
+                                                <span className="text-xs tabular-nums font-medium cursor-help text-green-600 dark:text-green-400">{nextRunningWorkout.distanceMiles.toFixed(1)}</span>
+                                            </Tooltip>
+                                        ) : (
+                                            <span className="text-xs text-gray-300 dark:text-gray-700">—</span>
+                                        )}
                                     </td>
                                 </>
                             }
