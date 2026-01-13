@@ -268,6 +268,17 @@ export async function convertHevyWorkout(
         reps: number;
         weightLbs: number | null;
     }>;
+    exercisesDetailed: Array<{
+        name: string;
+        bodyPart: string;
+        sets: Array<{
+            index: number;
+            type: 'normal' | 'warmup' | 'dropset' | 'failure';
+            weightLbs: number | null;
+            reps: number | null;
+            rpe: number | null;
+        }>;
+    }>;
 }> {
     const startTime = new Date(workout.start_time).getTime();
     const endTime = new Date(workout.end_time).getTime();
@@ -284,6 +295,17 @@ export async function convertHevyWorkout(
         reps: number;
         weightLbs: number | null;
     }> = [];
+    const exercisesDetailed: Array<{
+        name: string;
+        bodyPart: string;
+        sets: Array<{
+            index: number;
+            type: 'normal' | 'warmup' | 'dropset' | 'failure';
+            weightLbs: number | null;
+            reps: number | null;
+            rpe: number | null;
+        }>;
+    }> = [];
 
     for (const exercise of workout.exercises) {
         const bodyPart = await client.getBodyPartForExercise(exercise.exercise_template_id);
@@ -292,17 +314,34 @@ export async function convertHevyWorkout(
         let exerciseReps = 0;
         let exerciseVolumeLbs = 0;
         let maxWeightLbs: number | null = null;
+        const currentExerciseSets: Array<{
+            index: number;
+            type: 'normal' | 'warmup' | 'dropset' | 'failure';
+            weightLbs: number | null;
+            reps: number | null;
+            rpe: number | null;
+        }> = [];
 
         for (const set of exercise.sets) {
-            // Only count normal sets (not warmup)
+            // Store all normal/dropset/failure sets in detailed view
+            // Explicitly excluding warmup sets from detailed stats per plan requirements
             if (set.type === 'normal' || set.type === 'dropset' || set.type === 'failure') {
+                const weightLbs = set.weight_kg !== null ? set.weight_kg * KG_TO_LBS : null;
+
+                currentExerciseSets.push({
+                    index: set.index,
+                    type: set.type,
+                    weightLbs: weightLbs ? Math.round(weightLbs * 10) / 10 : null,
+                    reps: set.reps,
+                    rpe: set.rpe,
+                });
+
                 exerciseSets++;
 
                 const reps = set.reps || 0;
                 exerciseReps += reps;
 
-                if (set.weight_kg !== null) {
-                    const weightLbs = set.weight_kg * KG_TO_LBS;
+                if (weightLbs !== null) {
                     exerciseVolumeLbs += weightLbs * reps;
 
                     if (maxWeightLbs === null || weightLbs > maxWeightLbs) {
@@ -331,6 +370,12 @@ export async function convertHevyWorkout(
             reps: exerciseReps,
             weightLbs: maxWeightLbs ? Math.round(maxWeightLbs * 10) / 10 : null,
         });
+
+        exercisesDetailed.push({
+            name: exercise.title,
+            bodyPart,
+            sets: currentExerciseSets
+        });
     }
 
     return {
@@ -343,5 +388,6 @@ export async function convertHevyWorkout(
         totalVolumeLbs: Math.round(totalVolumeLbs),
         bodyParts,
         exercises,
+        exercisesDetailed,
     };
 }

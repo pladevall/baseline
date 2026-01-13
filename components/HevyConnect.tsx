@@ -104,20 +104,44 @@ export default function HevyConnect({ connections, onConnectionChange }: HevyCon
                         <span className="text-purple-500">🏋️</span>
                         <span className="text-sm font-medium">{connection.connectionName}</span>
                         <span className={`text-xs px-1.5 py-0.5 rounded ${connection.syncStatus === 'connected'
-                                ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300'
-                                : connection.syncStatus === 'error'
-                                    ? 'bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300'
-                                    : 'bg-yellow-100 dark:bg-yellow-900 text-yellow-700 dark:text-yellow-300'
+                            ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300'
+                            : connection.syncStatus === 'error'
+                                ? 'bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300'
+                                : 'bg-yellow-100 dark:bg-yellow-900 text-yellow-700 dark:text-yellow-300'
                             }`}>
+                            {connection.syncStatus}
                             {connection.syncStatus}
                         </span>
                     </div>
-                    <button
-                        onClick={() => handleDisconnect(connection.id)}
-                        className="text-xs text-gray-500 hover:text-red-600 dark:hover:text-red-400"
-                    >
-                        Disconnect
-                    </button>
+                    <div className="flex gap-2">
+                        <button
+                            onClick={async () => {
+                                try {
+                                    setSuccess('Sync started...');
+                                    const res = await fetch('/api/hevy/sync', {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ connectionId: connection.id }),
+                                    });
+                                    if (!res.ok) throw new Error('Sync failed');
+                                    const data = await res.json();
+                                    setSuccess(data.message || 'Sync complete');
+                                    onConnectionChange?.();
+                                } catch (e) {
+                                    setError('Sync failed');
+                                }
+                            }}
+                            className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                        >
+                            Sync Now
+                        </button>
+                        <button
+                            onClick={() => handleDisconnect(connection.id)}
+                            className="text-xs text-gray-500 hover:text-red-600 dark:hover:text-red-400"
+                        >
+                            Disconnect
+                        </button>
+                    </div>
                 </div>
             </div>
         );

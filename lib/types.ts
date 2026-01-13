@@ -347,10 +347,26 @@ export interface LiftingWorkout {
   durationSeconds: number;
   totalReps: number;
   totalVolumeLbs: number | null;
+
   bodyParts: Record<string, BodyPartStats> | null;
   exercises: LiftingExercise[] | null;
+  exercisesDetailed: LiftingExerciseDetailed[] | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface LiftingSetDetail {
+  index: number;
+  type: 'normal' | 'warmup' | 'dropset' | 'failure';
+  weightLbs: number | null;
+  reps: number | null;
+  rpe: number | null;
+}
+
+export interface LiftingExerciseDetailed {
+  name: string;
+  bodyPart: string;
+  sets: LiftingSetDetail[];
 }
 
 // Body parts tracked in lifting workouts

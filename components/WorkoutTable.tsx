@@ -6,6 +6,8 @@ import { TimeSeriesTable, TimeSeriesRow, SectionHeaderRow } from './TimeSeriesTa
 import { Goal } from '@/lib/supabase';
 import GoalEditor from './GoalEditor';
 import Tooltip from './Tooltip';
+import { MilestoneBadge } from './MilestoneBadge';
+import { calculateLiftingMilestones, calculateRunningMilestones, ExerciseMilestones, RunningMilestone } from '@/lib/milestones';
 
 interface WorkoutTableProps {
     runningActivities: RunningActivity[];
@@ -146,6 +148,10 @@ export default function WorkoutTable({ runningActivities, liftingWorkouts, goals
         runningActivities.forEach(a => map.set(toDateKey(a.activityDate), a));
         return map;
     }, [runningActivities]);
+
+    // Calculate milestones
+    const liftingMilestones = useMemo(() => calculateLiftingMilestones(liftingWorkouts), [liftingWorkouts]);
+    const runningMilestones = useMemo(() => calculateRunningMilestones(runningActivities), [runningActivities]);
 
     const liftingByDate = useMemo(() => {
         const map = new Map<string, LiftingWorkout>();
@@ -867,7 +873,7 @@ export default function WorkoutTable({ runningActivities, liftingWorkouts, goals
                             </div>
                         </div>
                     </th>
-                    <th className="px-2 py-2 text-center min-w-[60px] border-l border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800">
+                    <th className="px-2 py-2 text-center min-w-[60px] border-l border-gray-100 dark:border-gray-800 bg-indigo-50 dark:bg-indigo-900/20">
                         <span className="text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase">Avg</span>
                     </th>
                     <th className="px-2 py-2 text-center min-w-[70px] border-l border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800">
@@ -1661,6 +1667,35 @@ export default function WorkoutTable({ runningActivities, liftingWorkouts, goals
                                                                         : occurrence.sets}
                                                                 </span>
                                                             </Tooltip>
+                                                            {(() => {
+                                                                const m = liftingMilestones.get(exercise.name);
+                                                                if (!m) return null;
+
+                                                                const dateKey = date; // date is already YYYY-MM-DD from displayDates
+                                                                const records: string[] = [];
+
+                                                                if (m.heaviestWeight && toDateKey(m.heaviestWeight.date) === dateKey) records.push(`Heaviest: ${m.heaviestWeight.value} lbs`);
+                                                                if (m.bestSetVolume && toDateKey(m.bestSetVolume.date) === dateKey) records.push(`Best Set Vol: ${formatVolume(m.bestSetVolume.value)} lbs`);
+                                                                if (m.best1RM && toDateKey(m.best1RM.date) === dateKey) records.push(`Best 1RM: ${Math.round(m.best1RM.value)} lbs`);
+                                                                if (m.bestSessionVolume && toDateKey(m.bestSessionVolume.date) === dateKey) records.push(`Best Ses Vol: ${formatVolume(m.bestSessionVolume.value)} lbs`);
+
+                                                                if (records.length > 0) {
+                                                                    return (
+                                                                        <div className="ml-1 inline-flex">
+                                                                            <MilestoneBadge
+                                                                                type="pr"
+                                                                                date={m.heaviestWeight?.date || m.bestSetVolume?.date || m.best1RM?.date as string}
+                                                                                details={
+                                                                                    <ul className="list-disc list-inside">
+                                                                                        {records.map((r, i) => <li key={i}>{r}</li>)}
+                                                                                    </ul>
+                                                                                }
+                                                                            />
+                                                                        </div>
+                                                                    )
+                                                                }
+                                                                return null;
+                                                            })()}
                                                         </td>
                                                     );
                                                 })}
@@ -2130,9 +2165,25 @@ export default function WorkoutTable({ runningActivities, liftingWorkouts, goals
                                     return (
                                         <td key={date} className="px-3 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50">
                                             {time ? (
-                                                <span className="text-xs tabular-nums text-gray-900 dark:text-gray-100">
-                                                    {formatDuration(Math.round(time))}
-                                                </span>
+                                                <div className="flex items-center justify-center gap-1">
+                                                    <span className="text-xs tabular-nums text-gray-900 dark:text-gray-100">
+                                                        {formatDuration(Math.round(time))}
+                                                    </span>
+                                                    {(() => {
+                                                        const performances = runningMilestones.get(milestone.key);
+                                                        const perf = performances?.find(p => toDateKey(p.date) === date);
+                                                        if (perf) {
+                                                            return (
+                                                                <MilestoneBadge
+                                                                    type={perf.rank === 1 ? '1st' : perf.rank === 2 ? '2nd' : '3rd'}
+                                                                    date={perf.date}
+                                                                    details={`${perf.rank === 1 ? '1st' : perf.rank === 2 ? '2nd' : '3rd'} Fastest ${milestone.label}`}
+                                                                />
+                                                            );
+                                                        }
+                                                        return null;
+                                                    })()}
+                                                </div>
                                             ) : (
                                                 <span className="text-xs text-gray-300 dark:text-gray-700">—</span>
                                             )}

@@ -4,7 +4,7 @@
  */
 
 import { supabase } from './supabase';
-import { HevyConnection, LiftingWorkout, BodyPartStats, LiftingExercise } from './types';
+import { HevyConnection, LiftingWorkout, BodyPartStats, LiftingExercise, LiftingExerciseDetailed } from './types';
 
 // Simple encryption/decryption for API keys
 function encryptToken(token: string): string {
@@ -156,6 +156,17 @@ export async function saveLiftingWorkouts(
             reps: number;
             weightLbs: number | null;
         }>;
+        exercisesDetailed: Array<{
+            name: string;
+            bodyPart: string;
+            sets: Array<{
+                index: number;
+                type: 'normal' | 'warmup' | 'dropset' | 'failure';
+                weightLbs: number | null;
+                reps: number | null;
+                rpe: number | null;
+            }>;
+        }>;
     }>
 ): Promise<LiftingWorkout[]> {
     if (workouts.length === 0) {
@@ -173,6 +184,7 @@ export async function saveLiftingWorkouts(
         total_volume_lbs: w.totalVolumeLbs,
         body_parts: w.bodyParts,
         exercises: w.exercises,
+        exercises_detailed: w.exercisesDetailed,
     }));
 
     const { data, error } = await supabase
@@ -287,6 +299,7 @@ function mapRowToWorkout(row: Record<string, unknown>): LiftingWorkout {
         totalVolumeLbs: row.total_volume_lbs as number | null,
         bodyParts: row.body_parts as Record<string, BodyPartStats> | null,
         exercises: row.exercises as LiftingExercise[] | null,
+        exercisesDetailed: row.exercises_detailed as LiftingExerciseDetailed[] | null,
         createdAt: row.created_at as string,
         updatedAt: row.updated_at as string,
     };
