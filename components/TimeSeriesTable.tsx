@@ -33,7 +33,7 @@ export function TimeSeriesTable<T>({
             <table className="w-full text-sm">
                 <thead>
                     <tr className="border-b border-gray-200 dark:border-gray-800">
-                        <th className={`sticky left-0 z-30 bg-white dark:bg-gray-900 px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider ${stickyColumnWidth}`}>
+                        <th className={`sticky left-0 z-30 bg-white dark:bg-gray-900 px-4 py-2 text-left text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider ${stickyColumnWidth}`}>
                             {headerLabel}
                         </th>
                         {headerFixedContent}
@@ -48,17 +48,19 @@ export function TimeSeriesTable<T>({
     );
 }
 
-interface TimeSeriesRowProps {
+interface TimeSeriesRowProps<T = any> {
     label: ReactNode;
     fixedContent?: ReactNode;
-    children: ReactNode; // The data cells
+    children?: ReactNode; // The data cells (optional if columns used)
     className?: string; // Additional classes for the row
     labelClassName?: string; // Additional classes for the label cell
     onClick?: () => void;
     stickyColumnWidth?: string;
+    columns?: T[];
+    renderCell?: (item: T, index: number) => ReactNode;
 }
 
-export function TimeSeriesRow({
+export function TimeSeriesRow<T = any>({
     label,
     fixedContent,
     children,
@@ -66,7 +68,9 @@ export function TimeSeriesRow({
     labelClassName = '',
     onClick,
     stickyColumnWidth = 'min-w-[180px]',
-}: TimeSeriesRowProps) {
+    columns,
+    renderCell,
+}: TimeSeriesRowProps<T>) {
     return (
         <tr
             className={`hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors ${className}`}
@@ -77,6 +81,7 @@ export function TimeSeriesRow({
             </td>
             {fixedContent}
             {children}
+            {columns && renderCell && columns.map((item, i) => renderCell(item, i))}
         </tr>
     );
 }

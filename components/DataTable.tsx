@@ -804,7 +804,92 @@ function CategorySection({
                     )}
                   </td>
                   <td className="px-2 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50 bg-gray-50/50 dark:bg-gray-800/30">
-                    <Tooltip content={comparisonEntry ? `Change since ${formatDate(comparisonEntry.date)}` : 'Trend'}>
+                    <Tooltip content={
+                      comparisonEntry ? (
+                        metric.key === 'weight' ? (
+                          (() => {
+                            // Calculate weekly rates for weight and BF%
+                            const currentWeight = latestEntry.weight;
+                            const compWeight = comparisonEntry.weight;
+                            const currentBF = latestEntry.bodyFatPercentage;
+                            const compBF = comparisonEntry.bodyFatPercentage;
+
+                            const weightChange = currentWeight - compWeight;
+                            const bfChange = currentBF - compBF;
+                            const weeks = daysBetween / 7;
+
+                            const weightPerWeek = weeks > 0 ? weightChange / weeks : 0;
+                            const bfPerWeek = weeks > 0 ? bfChange / weeks : 0;
+
+                            // Safe rate guidance: typically 0.5-1% body weight per week for weight loss
+                            // or 0.25-0.5 lb/week for gradual gain
+                            const absWeightPerWeek = Math.abs(weightPerWeek);
+                            let rateStatus: 'slow' | 'good' | 'fast' | 'neutral' = 'neutral';
+                            let rateColor = '';
+
+                            if (weightChange < 0) {
+                              // Losing weight
+                              const pctPerWeek = (absWeightPerWeek / currentWeight) * 100;
+                              if (pctPerWeek < 0.25) {
+                                rateStatus = 'slow';
+                                rateColor = 'text-amber-500';
+                              } else if (pctPerWeek <= 1) {
+                                rateStatus = 'good';
+                                rateColor = 'text-emerald-500';
+                              } else {
+                                rateStatus = 'fast';
+                                rateColor = 'text-red-500';
+                              }
+                            } else if (weightChange > 0) {
+                              // Gaining weight
+                              if (absWeightPerWeek < 0.25) {
+                                rateStatus = 'slow';
+                                rateColor = 'text-gray-400';
+                              } else if (absWeightPerWeek <= 0.75) {
+                                rateStatus = 'good';
+                                rateColor = 'text-emerald-500';
+                              } else {
+                                rateStatus = 'fast';
+                                rateColor = 'text-amber-500';
+                              }
+                            }
+
+                            const rateLabel = rateStatus === 'slow' ? '(Slow)'
+                              : rateStatus === 'good' ? '(Healthy)'
+                                : rateStatus === 'fast' ? '(Fast)'
+                                  : '';
+
+                            return (
+                              <div className="text-left">
+                                <div className="font-medium mb-1">Change since {formatDate(comparisonEntry.date)}</div>
+                                <div className="border-t border-gray-600 mt-1 pt-1">
+                                  <div className="font-medium text-[11px] mb-0.5">Weekly Rate:</div>
+                                  <div className="flex items-center gap-1">
+                                    <span>Weight:</span>
+                                    <span className={rateColor}>
+                                      {weightPerWeek >= 0 ? '+' : ''}{weightPerWeek.toFixed(2)} lb/wk
+                                    </span>
+                                    {rateLabel && <span className={`text-[10px] ${rateColor}`}>{rateLabel}</span>}
+                                  </div>
+                                  <div>
+                                    Body Fat: {bfPerWeek >= 0 ? '+' : ''}{bfPerWeek.toFixed(2)} %/wk
+                                  </div>
+                                </div>
+                                <div className="border-t border-gray-600 mt-1 pt-1 text-[10px] opacity-70">
+                                  {weightChange < 0 ? (
+                                    <>Ideal loss: 0.5–1% body weight/wk</>
+                                  ) : (
+                                    <>Ideal gain: 0.25–0.5 lb/wk (lean)</>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })()
+                        ) : (
+                          `Change since ${formatDate(comparisonEntry.date)}`
+                        )
+                      ) : 'Trend'
+                    }>
                       <span className={`text-xs tabular-nums font-medium cursor-help ${trendColor}`}>
                         {trendText}
                       </span>
