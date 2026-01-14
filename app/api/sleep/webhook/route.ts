@@ -7,29 +7,12 @@ import { SleepStages } from '@/lib/types';
 interface HealthExportMetrics {
     name: string;
     units: string;
-    data: {
-        qty: number;
-        date: string;
-        source?: string;
-    }[];
-}
-
-interface SleepAnalysisMetric {
-    name: "sleep_analysis";
-    data: {
-        qty: number; // Duration in seconds? No, value represents stage usually
-        date: string;
-        source: string;
-        value: "InBed" | "Asleep" | "Awake" | "Core" | "Deep" | "REM";
-        startDate: string;
-        endDate: string;
-        duration: number; // seconds
-    }[];
+    data: any[]; // Can be varying shapes
 }
 
 interface WebhookPayload {
     data: {
-        metrics: (HealthExportMetrics | SleepAnalysisMetric)[];
+        metrics: HealthExportMetrics[];
     };
 }
 
@@ -38,201 +21,184 @@ export async function POST(req: NextRequest) {
         const payload: WebhookPayload = await req.json();
 
         // Find sleep analysis data
-        const sleepMetric = payload.data.metrics.find(m => m.name === 'sleep_analysis') as SleepAnalysisMetric | undefined;
+        const sleepMetric = payload.data.metrics.find(m => m.name === 'sleep_analysis');
 
         if (!sleepMetric || !sleepMetric.data || sleepMetric.data.length === 0) {
             return NextResponse.json({ message: 'No sleep data found in payload' }, { status: 200 });
         }
 
-        // Group by date (Health Auto Export might send multiple days)
-        // We'll use the startDate of the sleep session to determine the "sleep date"
-        // Usually, sleep starting before noon belongs to the previous day's "sleep night"
-        // But simplistic approach: group by the date string of the start time
-
-        // Better approach: HealthKit sleep sessions are usually grouped by the app
-        // Let's assume the payload contains data relevant to a specific period.
-        // We need to aggregate samples into a single night's sleep.
-
-        // 1. Identify unique sleep sessions (nights)
-        // A gap of > 4 hours usually implies a different sleep session
-        // For now, let's process the most recent night found in the data
-
-        // 1. Filter out invalid data first
+        const preferences = await getSleepPreferences();
+        const results = [];
         const invalidSamples: any[] = [];
-        const validSamples = sleepMetric.data.filter(s => {
-            // Check if fields exist
-            if (!s.startDate || !s.endDate) {
-                if (invalidSamples.length < 1) invalidSamples.push({ reason: 'Missing startDate/endDate', s });
-                return false;
+
+        // Check format of the first sample to determine processing mode
+        const firstSample = sleepMetric.data[0];
+        const isAggregated = firstSample.sleepStart !== undefined && firstSample.totalSleep !== undefined;
+
+        console.log(`Processing mode: ${isAggregated ? 'AGGREGATED' : 'RAW SEGMENTS'}`);
+
+        if (isAggregated) {
+            // --- AGGREGATED FORMAT HANDLING ---
+            // Format: { date, sleepStart, sleepEnd, totalSleep (hrs), deep (hrs), rem (hrs), ... }
+
+            for (const sample of sleepMetric.data) {
+                try {
+                    // Validations
+                    if (!sample.date || !sample.sleepStart || !sample.sleepEnd) {
+                        invalidSamples.push({ reason: 'Missing core fields', sample });
+                        continue;
+                    }
+
+                    // Parse dates
+                    const sleepDate = sample.date.split(' ')[0]; // "2026-01-07 00:00:00 -0800" -> "2026-01-07"
+                    const sleepStart = sample.sleepStart; // Keep ISO or whatever strings they are
+                    const sleepEnd = sample.sleepEnd;
+
+                    // Parse durations (Strings in hours -> Float Minutes)
+                    const hoursToMinutes = (val: any) => {
+                        const v = parseFloat(val);
+                        return isNaN(v) ? 0 : v * 60;
+                    };
+
+                    const totalSleepMinutes = hoursToMinutes(sample.totalSleep);
+                    const stages: SleepStages = {
+                        awakeMinutes: hoursToMinutes(sample.awake),
+                        remMinutes: hoursToMinutes(sample.rem),
+                        coreMinutes: hoursToMinutes(sample.core),
+                        deepMinutes: hoursToMinutes(sample.deep),
+                        inBedMinutes: hoursToMinutes(sample.inBed),
+                        totalSleepMinutes: totalSleepMinutes
+                    };
+
+                    // Fallback for InBed
+                    if (stages.inBedMinutes < stages.totalSleepMinutes) {
+                        stages.inBedMinutes = stages.totalSleepMinutes + stages.awakeMinutes;
+                    }
+
+                    // Calculate Scores
+                    const { totalScore, durationScore, bedtimeScore, interruptionScore } = calculateSleepScore({
+                        totalSleepMinutes: stages.totalSleepMinutes,
+                        bedtime: sleepStart,
+                        wakeCount: 0, // Aggregated data often lacks wake count, assume 0 or low impact
+                        awakeMinutes: stages.awakeMinutes
+                    }, preferences);
+
+                    // Save
+                    const saved = await saveSleepEntry({
+                        sleepDate: sleepDate,
+                        sleepScore: totalScore,
+                        durationScore,
+                        bedtimeScore,
+                        interruptionScore,
+                        data: {
+                            stages,
+                            interruptions: { count: 0, totalMinutes: stages.awakeMinutes },
+                            sleepStart,
+                            sleepEnd
+                        }
+                    });
+
+                    results.push(saved);
+
+                } catch (e: any) {
+                    console.error('Error processing aggregated sample:', e);
+                    invalidSamples.push({ reason: 'Processing error', error: e.message, sample });
+                }
             }
 
-            const start = new Date(s.startDate).getTime();
-            const end = new Date(s.endDate).getTime();
+        } else {
+            // --- RAW SEGMENTS HANDLING (Existing Logic) ---
 
-            if (isNaN(start) || isNaN(end)) {
-                if (invalidSamples.length < 1) invalidSamples.push({ reason: 'NaN date parsing', s, rawStart: s.startDate, rawEnd: s.endDate });
-                return false;
+            // 1. Filter valid raw samples
+            const validSamples = sleepMetric.data.filter(s => {
+                const start = new Date(s.startDate).getTime();
+                const end = new Date(s.endDate).getTime();
+                if (isNaN(start) || isNaN(end)) {
+                    invalidSamples.push({ reason: 'NaN dates', sample: s });
+                    return false;
+                }
+                return true;
+            });
+
+            if (validSamples.length === 0 && results.length === 0) {
+                // return error later if results empty
+            } else {
+                // Sort
+                validSamples.sort((a: any, b: any) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
+
+                // Group by Date
+                const groupedByDate: Record<string, any[]> = {};
+                validSamples.forEach(sample => {
+                    const start = new Date(sample.startDate);
+                    if (start.getHours() < 15) {
+                        const prev = new Date(start);
+                        prev.setDate(prev.getDate() - 1);
+                        groupedByDate[prev.toISOString().split('T')[0]] = groupedByDate[prev.toISOString().split('T')[0]] || [];
+                        groupedByDate[prev.toISOString().split('T')[0]].push(sample);
+                    } else {
+                        const dateKey = start.toISOString().split('T')[0];
+                        groupedByDate[dateKey] = groupedByDate[dateKey] || [];
+                        groupedByDate[dateKey].push(sample);
+                    }
+                });
+
+                // Process Groups
+                for (const [date, daysSamples] of Object.entries(groupedByDate)) {
+                    // (Same logic as before for raw aggregation)
+                    const stages: SleepStages = {
+                        awakeMinutes: 0, remMinutes: 0, coreMinutes: 0, deepMinutes: 0, inBedMinutes: 0, totalSleepMinutes: 0
+                    };
+                    let sleepStartMs = Number.MAX_SAFE_INTEGER;
+                    let sleepEndMs = 0;
+                    let wakeCount = 0;
+
+                    daysSamples.forEach(s => {
+                        const duration = s.duration / 60; // seconds -> minutes (Wait, check units! usually seconds in raw)
+                        // Actually in previous code we assumed seconds. Let's verify.
+                        // Standard HealthKit raw export is seconds.
+
+                        const startMs = new Date(s.startDate).getTime();
+                        const endMs = new Date(s.endDate).getTime();
+                        if (startMs < sleepStartMs) sleepStartMs = startMs;
+                        if (endMs > sleepEndMs) sleepEndMs = endMs;
+
+                        switch (s.value) {
+                            case 'Awake': stages.awakeMinutes += duration; wakeCount++; break;
+                            case 'REM': stages.remMinutes += duration; stages.totalSleepMinutes += duration; break;
+                            case 'Deep': stages.deepMinutes += duration; stages.totalSleepMinutes += duration; break;
+                            case 'Core': stages.coreMinutes += duration; stages.totalSleepMinutes += duration; break;
+                            case 'Asleep': stages.coreMinutes += duration; stages.totalSleepMinutes += duration; break;
+                            case 'InBed': stages.inBedMinutes += duration; break;
+                        }
+                    });
+
+                    if (stages.inBedMinutes < stages.totalSleepMinutes) stages.inBedMinutes = stages.totalSleepMinutes + stages.awakeMinutes;
+
+                    const sleepStart = new Date(sleepStartMs).toISOString();
+                    const sleepEnd = new Date(sleepEndMs).toISOString();
+
+                    const { totalScore, durationScore, bedtimeScore, interruptionScore } = calculateSleepScore({
+                        totalSleepMinutes: stages.totalSleepMinutes,
+                        bedtime: sleepStart,
+                        wakeCount,
+                        awakeMinutes: stages.awakeMinutes
+                    }, preferences);
+
+                    const saved = await saveSleepEntry({
+                        sleepDate: date,
+                        sleepScore: totalScore, durationScore, bedtimeScore, interruptionScore,
+                        data: { stages, interruptions: { count: wakeCount, totalMinutes: stages.awakeMinutes }, sleepStart, sleepEnd }
+                    });
+                    results.push(saved);
+                }
             }
-            return true;
-        });
-
-        if (validSamples.length === 0) {
-            console.warn('No valid sleep samples found. Debug info:', invalidSamples[0]);
-            return NextResponse.json({
-                message: 'No valid sleep samples found',
-                debug: invalidSamples[0],
-                hint: 'Ensure "Aggregation" is set to "None" (OFF) in Health Auto Export.'
-            }, { status: 200 });
         }
 
-        // Sort samples by date
-        const samples = validSamples.sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
-
-        // Helpers
-        const getDurationMinutes = (sample: typeof samples[0]) => sample.duration / 60;
-
-        // Identify the main sleep chunk
-        // Valid night sleep usually ends in the morning (e.g. 5am - 11am)
-        // We will target the latest sleep session in the payload
-
-        // Let's group samples by "Sleep Date". 
-        // If a sample starts at 11PM on Jan 1, it's Jan 1 sleep.
-        // If it starts at 1AM on Jan 2, it's Jan 1 sleep.
-        // Rule: if start hour < 12 (noon), it belongs to previous day.
-
-        const groupedByDate: Record<string, typeof samples> = {};
-
-        samples.forEach(sample => {
-            const start = new Date(sample.startDate);
-            const hour = start.getHours();
-            let dateKey: string;
-
-            if (hour < 15) { // Arbitrary cutoff: sleep ending/starting before 3PM counts as previous night
-                const prevDate = new Date(start);
-                prevDate.setDate(prevDate.getDate() - 1);
-                dateKey = prevDate.toISOString().split('T')[0];
-            } else {
-                dateKey = start.toISOString().split('T')[0];
-            }
-
-            if (!groupedByDate[dateKey]) groupedByDate[dateKey] = [];
-            groupedByDate[dateKey].push(sample);
-        });
-
-        // Process most recent date only, or all? Let's process all found
-        const results = [];
-        const preferences = await getSleepPreferences();
-
-        for (const [date, daysSamples] of Object.entries(groupedByDate)) {
-            if (daysSamples.length > 0) {
-                console.log(`Processing ${date}, sample 0: start=${daysSamples[0].startDate}, end=${daysSamples[0].endDate}`);
-            }
-            // Aggregate stages
-            const stages: SleepStages = {
-                awakeMinutes: 0,
-                remMinutes: 0,
-                coreMinutes: 0,
-                deepMinutes: 0,
-                inBedMinutes: 0,
-                totalSleepMinutes: 0
-            };
-
-            // Values: 'InBed', 'Asleep', 'Awake', 'Core', 'Deep', 'REM'
-            // Note: 'Asleep' is often used if detailed stages aren't available (like older watches)
-            // 'InBed' overlaps with others usually
-
-            let sleepStartMs = Number.MAX_SAFE_INTEGER;
-            let sleepEndMs = 0;
-
-            // Track interruptions
-            // A wake segment > 5 mins or distinct wake segments
-            let wakeCount = 0;
-            let lastEndMs = 0;
-
-            daysSamples.forEach(s => {
-                const duration = s.duration / 60; // minutes
-                const startMs = new Date(s.startDate).getTime();
-                const endMs = new Date(s.endDate).getTime();
-
-                if (startMs < sleepStartMs) sleepStartMs = startMs;
-                if (endMs > sleepEndMs) sleepEndMs = endMs;
-
-                switch (s.value) {
-                    case 'Awake':
-                        stages.awakeMinutes += duration;
-                        wakeCount++;
-                        break;
-                    case 'REM':
-                        stages.remMinutes += duration;
-                        stages.totalSleepMinutes += duration;
-                        break;
-                    case 'Deep':
-                        stages.deepMinutes += duration;
-                        stages.totalSleepMinutes += duration;
-                        break;
-                    case 'Core':
-                        stages.coreMinutes += duration;
-                        stages.totalSleepMinutes += duration;
-                        break;
-                    case 'Asleep':
-                        // Generic sleep if stages not detailed
-                        stages.coreMinutes += duration;
-                        stages.totalSleepMinutes += duration;
-                        break;
-                    case 'InBed':
-                        stages.inBedMinutes += duration;
-                        break;
-                }
-            });
-
-            // If InBed not provided effectively, approximate it
-            if (stages.inBedMinutes < stages.totalSleepMinutes) {
-                stages.inBedMinutes = stages.totalSleepMinutes + stages.awakeMinutes;
-            }
-
-            // Calculate Scores
-            if (sleepStartMs === Number.MAX_SAFE_INTEGER || sleepEndMs === 0) {
-                console.warn(`Invalid sleep times for date ${date}: start=${sleepStartMs}, end=${sleepEndMs}`);
-                // fallback or skip?
-                // skipping to avoid crash
-                // actually, let's try to proceed carefully
-            }
-
-            let sleepStart: string;
-            let sleepEnd: string;
-
-            try {
-                sleepStart = new Date(sleepStartMs).toISOString();
-                sleepEnd = new Date(sleepEndMs).toISOString();
-            } catch (e) {
-                console.error(`Date conversion error for ${date}:`, e, { sleepStartMs, sleepEndMs });
-                // Fallback to "now" or skip, but better to skip saving this entry if it's corrupt
-                continue;
-            }
-
-            const { totalScore, durationScore, bedtimeScore, interruptionScore } = calculateSleepScore({
-                totalSleepMinutes: stages.totalSleepMinutes,
-                bedtime: sleepStart,
-                wakeCount: wakeCount,
-                awakeMinutes: stages.awakeMinutes
-            }, preferences);
-
-            // Save to DB
-            const saved = await saveSleepEntry({
-                sleepDate: date,
-                sleepScore: totalScore,
-                durationScore,
-                bedtimeScore,
-                interruptionScore,
-                data: {
-                    stages,
-                    interruptions: { count: wakeCount, totalMinutes: stages.awakeMinutes },
-                    sleepStart,
-                    sleepEnd
-                }
-            });
-
-            results.push(saved);
+        if (results.length === 0) {
+            return NextResponse.json({
+                message: 'No sleep entries created',
+                debug: { invalidCount: invalidSamples.length, sampleInvalid: invalidSamples[0] }
+            }, { status: 200 });
         }
 
         return NextResponse.json({ success: true, processed: results.length, results });
