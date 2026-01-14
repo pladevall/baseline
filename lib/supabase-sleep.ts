@@ -14,8 +14,8 @@ export async function saveSleepEntry(entry: Omit<SleepEntry, 'id' | 'createdAt'>
             sleep_score: entry.sleepScore,
             duration_score: entry.durationScore,
             bedtime_score: entry.bedtimeScore,
-            interruption_score: entry.interruptionScore,
-            duration_minutes: entry.data.stages.totalSleepMinutes,
+            interruption_score: Math.round(entry.interruptionScore),
+            duration_minutes: Math.round(entry.data.stages.totalSleepMinutes),
             data: entry.data
         }, {
             onConflict: 'sleep_date'
