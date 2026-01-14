@@ -3,8 +3,88 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
+  /* ------------------------------------------------------------------------- */
+  /* DEFAULT THEME: ZINC (Cool) + INDIGO (Accent)                              */
+  /* ------------------------------------------------------------------------- */
+
+  /* Gray Palette -> Zinc */
+  --color-gray-50: #fafafa;
+  --color-gray-100: #f4f4f5;
+  --color-gray-200: #e4e4e7;
+  --color-gray-300: #d4d4d8;
+  --color-gray-400: #a1a1aa;
+  --color-gray-500: #71717a;
+  --color-gray-600: #52525b;
+  --color-gray-700: #3f3f46;
+  --color-gray-800: #27272a;
+  --color-gray-900: #18181b;
+  --color-gray-950: #09090b;
+
+  /* Primary Palette -> Indigo */
+  --color-primary-50: #eef2ff;
+  --color-primary-100: #e0e7ff;
+  --color-primary-200: #c7d2fe;
+  --color-primary-300: #a5b4fc;
+  --color-primary-400: #818cf8;
+  --color-primary-500: #6366f1;
+  --color-primary-600: #4f46e5;
+  --color-primary-700: #4338ca;
+  --color-primary-800: #3730a3;
+  --color-primary-900: #312e81;
+  --color-primary-950: #1e1b4b;
+
+  /* Semantic Colors */
+  --color-success: #46c07b;
+  --color-warning: #ffb84d;
+  --color-danger: #e65a5a;
+
+  /* Semantic mappings */
   --background: #ffffff;
   --foreground: #171717;
+}
+
+[data-theme='warm'] {
+  /* ------------------------------------------------------------------------- */
+  /* WARM THEME: STONE (Warm) + ORANGE (Accent)                                */
+  /* ------------------------------------------------------------------------- */
+
+  /* Gray Palette -> Linear/Cron Warm Dark */
+  --color-gray-50: #f5f5f5;
+  --color-gray-100: #eaeaea;
+  /* Primary Text */
+  --color-gray-200: #dadada;
+  --color-gray-300: #c9c9c9;
+  --color-gray-400: #b8b8b8;
+  /* Secondary Text */
+  --color-gray-500: #858585;
+  --color-gray-600: #666666;
+  --color-gray-700: #505050;
+  /* Borders/Dividers */
+  --color-gray-800: #202020;
+  /* Elevated Surface */
+  --color-gray-900: #1c1c1c;
+  /* Surface */
+  --color-gray-950: #121212;
+  /* Background */
+
+  /* Primary Palette -> Orange/Amber */
+  --color-primary-50: #fff7ed;
+  --color-primary-100: #ffedd5;
+  --color-primary-200: #fed7aa;
+  --color-primary-300: #fdba74;
+  --color-primary-400: #ff8f5e;
+  /* Accent Hover */
+  --color-primary-500: #ff7a45;
+  /* Accent */
+  --color-primary-600: #ea580c;
+  --color-primary-700: #c2410c;
+  --color-primary-800: #9a3412;
+  --color-primary-900: #7c2d12;
+  --color-primary-950: #431407;
+
+  /* Semantic mappings */
+  --background: var(--color-gray-50);
+  --foreground: var(--color-gray-900);
 }
 
 .dark {
@@ -12,11 +92,48 @@
   --foreground: #ededed;
 }
 
+[data-theme='warm'] .dark {
+  --background: var(--color-gray-950);
+  --foreground: var(--color-gray-100);
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+
+  /* Override Gray Utilities to use our Dynamic Variables */
+  --color-gray-50: var(--color-gray-50);
+  --color-gray-100: var(--color-gray-100);
+  --color-gray-200: var(--color-gray-200);
+  --color-gray-300: var(--color-gray-300);
+  --color-gray-400: var(--color-gray-400);
+  --color-gray-500: var(--color-gray-500);
+  --color-gray-600: var(--color-gray-600);
+  --color-gray-700: var(--color-gray-700);
+  --color-gray-800: var(--color-gray-800);
+  --color-gray-900: var(--color-gray-900);
+  --color-gray-950: var(--color-gray-950);
+
+  /* Override Indigo Utilities to use our Primary (Accent) Variables */
+  /* This automatically themes 'text-indigo-500' to Orange in the default theme */
+  --color-indigo-50: var(--color-primary-50);
+  --color-indigo-100: var(--color-primary-100);
+  --color-indigo-200: var(--color-primary-200);
+  --color-indigo-300: var(--color-primary-300);
+  --color-indigo-400: var(--color-primary-400);
+  --color-indigo-500: var(--color-primary-500);
+  --color-indigo-600: var(--color-primary-600);
+  --color-indigo-700: var(--color-primary-700);
+  --color-indigo-800: var(--color-primary-800);
+  --color-indigo-900: var(--color-primary-900);
+  --color-indigo-950: var(--color-primary-950);
+
+  /* Semantic Overrides for Success/Warning/Danger */
+  --color-green-500: var(--color-success);
+  --color-yellow-500: var(--color-warning);
+  --color-red-500: var(--color-danger);
 }
 
 body {
@@ -47,11 +164,11 @@ body {
 /* Custom scrollbar styling */
 * {
   scrollbar-width: thin;
-  scrollbar-color: #a1a1aa transparent;
+  scrollbar-color: var(--color-gray-400) transparent;
 }
 
 .dark * {
-  scrollbar-color: #3f3f46 transparent;
+  scrollbar-color: var(--color-gray-700) transparent;
 }
 
 /* WebKit browsers (Chrome, Safari, Edge) */
@@ -65,18 +182,18 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background-color: #a1a1aa;
+  background-color: var(--color-gray-400);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background-color: #71717a;
+  background-color: var(--color-gray-500);
 }
 
 .dark ::-webkit-scrollbar-thumb {
-  background-color: #3f3f46;
+  background-color: var(--color-gray-700);
 }
 
 .dark ::-webkit-scrollbar-thumb:hover {
-  background-color: #52525b;
+  background-color: var(--color-gray-600);
 }

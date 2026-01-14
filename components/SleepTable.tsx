@@ -58,28 +58,9 @@ export function SleepTable({ entries }: SleepTableProps) {
         new Date(b.sleepDate).getTime() - new Date(a.sleepDate).getTime()
     );
 
-    // Dummy fixed columns to align with Measurements table
-    // Measurements: Goal (60px), ETA (60px), Trend (70px)
-    const renderDummyHeader = () => (
-        <>
-            <th className="px-2 py-2 text-center min-w-[60px] border-l border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50"></th>
-            <th className="px-2 py-2 text-center min-w-[60px] border-l border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50"></th>
-            <th className="px-2 py-2 text-center min-w-[70px] border-l border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50"></th>
-        </>
-    );
-
-    const renderDummyCells = (isHeader = false) => (
-        <>
-            <td className="px-2 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50 bg-gray-50/30 dark:bg-gray-900/20"></td>
-            <td className="px-2 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50 bg-gray-50/30 dark:bg-gray-900/20"></td>
-            <td className="px-2 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50 bg-gray-50/30 dark:bg-gray-900/20"></td>
-        </>
-    );
-
     return (
         <TimeSeriesTable
             headerLabel="METRIC"
-            headerFixedContent={renderDummyHeader()}
             columns={sortedEntries}
             renderColumnHeader={(entry) => (
                 <th key={entry.id} className="px-3 py-2 text-center min-w-[100px] border-l border-gray-100 dark:border-gray-800/50">
@@ -95,14 +76,12 @@ export function SleepTable({ entries }: SleepTableProps) {
                 isExpanded={expandedSections.has('overview')}
                 onToggle={() => toggleSection('overview')}
                 columnCount={sortedEntries.length}
-                fixedCellsCount={3}
             />
 
             {expandedSections.has('overview') && (
                 <>
                     <TimeSeriesRow
                         label="Sleep Score"
-                        fixedContent={renderDummyCells()}
                         columns={sortedEntries}
                         renderCell={(entry) => (
                             <td key={entry.id} className="px-3 py-2 text-center border-l border-gray-100 dark:border-gray-800/50">
@@ -114,7 +93,6 @@ export function SleepTable({ entries }: SleepTableProps) {
                     />
                     <TimeSeriesRow
                         label="Duration"
-                        fixedContent={renderDummyCells()}
                         columns={sortedEntries}
                         renderCell={(entry) => (
                             <td key={entry.id} className="px-3 py-2 text-center border-l border-gray-100 dark:border-gray-800/50">
@@ -133,14 +111,12 @@ export function SleepTable({ entries }: SleepTableProps) {
                 isExpanded={expandedSections.has('timing')}
                 onToggle={() => toggleSection('timing')}
                 columnCount={sortedEntries.length}
-                fixedCellsCount={3}
             />
 
             {expandedSections.has('timing') && (
                 <>
                     <TimeSeriesRow
                         label="Bedtime"
-                        fixedContent={renderDummyCells()}
                         columns={sortedEntries}
                         renderCell={(entry) => (
                             <td key={entry.id} className="px-3 py-2 text-center border-l border-gray-100 dark:border-gray-800/50">
@@ -152,7 +128,6 @@ export function SleepTable({ entries }: SleepTableProps) {
                     />
                     <TimeSeriesRow
                         label="Wake Up"
-                        fixedContent={renderDummyCells()}
                         columns={sortedEntries}
                         renderCell={(entry) => (
                             <td key={entry.id} className="px-3 py-2 text-center border-l border-gray-100 dark:border-gray-800/50">
@@ -164,7 +139,6 @@ export function SleepTable({ entries }: SleepTableProps) {
                     />
                     <TimeSeriesRow
                         label="Time in Bed"
-                        fixedContent={renderDummyCells()}
                         columns={sortedEntries}
                         renderCell={(entry) => (
                             <td key={entry.id} className="px-3 py-2 text-center border-l border-gray-100 dark:border-gray-800/50">
@@ -183,14 +157,12 @@ export function SleepTable({ entries }: SleepTableProps) {
                 isExpanded={expandedSections.has('stages')}
                 onToggle={() => toggleSection('stages')}
                 columnCount={sortedEntries.length}
-                fixedCellsCount={3}
             />
 
             {expandedSections.has('stages') && (
                 <>
                     <TimeSeriesRow
                         label="Deep Sleep"
-                        fixedContent={renderDummyCells()}
                         columns={sortedEntries}
                         renderCell={(entry) => (
                             <td key={entry.id} className="px-3 py-2 text-center border-l border-gray-100 dark:border-gray-800/50">
@@ -202,7 +174,6 @@ export function SleepTable({ entries }: SleepTableProps) {
                     />
                     <TimeSeriesRow
                         label="REM Sleep"
-                        fixedContent={renderDummyCells()}
                         columns={sortedEntries}
                         renderCell={(entry) => (
                             <td key={entry.id} className="px-3 py-2 text-center border-l border-gray-100 dark:border-gray-800/50">
@@ -214,7 +185,6 @@ export function SleepTable({ entries }: SleepTableProps) {
                     />
                     <TimeSeriesRow
                         label="Core Sleep"
-                        fixedContent={renderDummyCells()}
                         columns={sortedEntries}
                         renderCell={(entry) => (
                             <td key={entry.id} className="px-3 py-2 text-center border-l border-gray-100 dark:border-gray-800/50">
@@ -226,7 +196,6 @@ export function SleepTable({ entries }: SleepTableProps) {
                     />
                     <TimeSeriesRow
                         label="Awake"
-                        fixedContent={renderDummyCells()}
                         columns={sortedEntries}
                         renderCell={(entry) => (
                             <td key={entry.id} className="px-3 py-2 text-center border-l border-gray-100 dark:border-gray-800/50">

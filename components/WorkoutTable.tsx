@@ -1,13 +1,22 @@
 'use client';
 
+// KEEP CONSISTENT: Use 'text-gray-300 dark:text-gray-600' for all empty state dashes to ensure subtle but visible styling.
 import React, { useState, useMemo } from 'react';
+// KEEP CONSISTENT: Use 'text-gray-300 dark:text-gray-600' for all empty state dashes to ensure subtle but visible styling.
 import { RunningActivity, LiftingWorkout, WorkoutType, VolumePeriod, BODY_PARTS, RUNNING_MILESTONES } from '@/lib/types';
+// KEEP CONSISTENT: Use 'text-gray-300 dark:text-gray-600' for all empty state dashes to ensure subtle but visible styling.
 import { TimeSeriesTable, TimeSeriesRow, SectionHeaderRow } from './TimeSeriesTable';
+// KEEP CONSISTENT: Use 'text-gray-300 dark:text-gray-600' for all empty state dashes to ensure subtle but visible styling.
 import { Goal } from '@/lib/supabase';
+// KEEP CONSISTENT: Use 'text-gray-300 dark:text-gray-600' for all empty state dashes to ensure subtle but visible styling.
 import GoalEditor from './GoalEditor';
+// KEEP CONSISTENT: Use 'text-gray-300 dark:text-gray-600' for all empty state dashes to ensure subtle but visible styling.
 import Tooltip from './Tooltip';
+// KEEP CONSISTENT: Use 'text-gray-300 dark:text-gray-600' for all empty state dashes to ensure subtle but visible styling.
 import { MilestoneBadge } from './MilestoneBadge';
+// KEEP CONSISTENT: Use 'text-gray-300 dark:text-gray-600' for all empty state dashes to ensure subtle but visible styling.
 import { calculateLiftingMilestones, calculateRunningMilestones, ExerciseMilestones, RunningMilestone, calculate1RM } from '@/lib/milestones';
+// KEEP CONSISTENT: Use 'text-gray-300 dark:text-gray-600' for all empty state dashes to ensure subtle but visible styling.
 import { generateLiftingWorkout, generateRunningWorkout, GeneratedLiftingWorkout, GeneratedRunningWorkout, getWeeklySetsPerMuscleGroup } from '@/lib/workout-generator';
 
 interface WorkoutTableProps {
@@ -101,7 +110,7 @@ function formatVolume(volumeLbs: number | undefined | null): string {
 
 // Format trend value with sign and color
 function formatTrendValue(diff: number, isVolume: boolean): { text: string; color: string } {
-    if (Math.abs(diff) < 0.5) return { text: '—', color: 'text-gray-300 dark:text-gray-700' };
+    if (Math.abs(diff) < 0.5) return { text: '—', color: 'text-gray-300 dark:text-gray-500' };
 
     const sign = diff > 0 ? '+' : '';
     const text = isVolume
@@ -792,7 +801,7 @@ export default function WorkoutTable({ runningActivities, liftingWorkouts, goals
         const goalValue = explicitGoalValue !== undefined ? explicitGoalValue : goalsMap.get(metricKey);
 
         let displayValue = '—';
-        let colorClass = 'text-gray-300 dark:text-gray-700';
+        let colorClass = 'text-gray-300 dark:text-gray-500';
         let tooltipContent: React.ReactNode = null;
 
         if (goalValue) {
@@ -1068,7 +1077,7 @@ export default function WorkoutTable({ runningActivities, liftingWorkouts, goals
                             </Tooltip>
                         </td>
                         <td className="px-2 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50 bg-gray-50/30 dark:bg-gray-800/20">
-                            <span className="text-xs text-gray-300 dark:text-gray-700">—</span>
+                            <span className="text-xs text-gray-300 dark:text-gray-600">—</span>
                         </td>
                         <td className="px-2 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50 bg-gray-50/30 dark:bg-gray-800/20">
                             {(() => {
@@ -1111,7 +1120,7 @@ export default function WorkoutTable({ runningActivities, liftingWorkouts, goals
                             })()}
                         </td>
                         <td className="px-2 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50 bg-green-50/30 dark:bg-green-900/10">
-                            <span className="text-xs text-gray-300 dark:text-gray-700">—</span>
+                            <span className="text-xs text-gray-300 dark:text-gray-600">—</span>
                         </td>
                     </>
                 }
@@ -1122,7 +1131,7 @@ export default function WorkoutTable({ runningActivities, liftingWorkouts, goals
                     if (streak === 0) {
                         return (
                             <td key={date} className="px-2 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50">
-                                <span className="text-xs text-gray-300 dark:text-gray-700">—</span>
+                                <span className="text-xs text-gray-300 dark:text-gray-600">—</span>
                             </td>
                         );
                     }
@@ -1215,7 +1224,7 @@ export default function WorkoutTable({ runningActivities, liftingWorkouts, goals
                             })()}
                         </td>
                         <td className="px-2 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50 bg-green-50/30 dark:bg-green-900/10">
-                            <span className="text-xs text-gray-300 dark:text-gray-700">—</span>
+                            <span className="text-xs text-gray-300 dark:text-gray-600">—</span>
                         </td>
                     </>
                 }
@@ -1241,7 +1250,7 @@ export default function WorkoutTable({ runningActivities, liftingWorkouts, goals
 
                     return (
                         <td key={date} className={`px-3 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50 ${bgClass}`}>
-                            <span className={`text-xs tabular-nums ${count === 0 ? 'text-gray-300 dark:text-gray-700' : 'text-gray-900 dark:text-gray-100'}`}>
+                            <span className={`text-xs tabular-nums ${count === 0 ? 'text-gray-300 dark:text-gray-600' : 'text-gray-900 dark:text-gray-100'}`}>
                                 {count}
                             </span>
                         </td>
@@ -1396,7 +1405,7 @@ export default function WorkoutTable({ runningActivities, liftingWorkouts, goals
                                                 </button>
                                             </div>
                                         ) : (
-                                            <span className="text-xs text-gray-300 dark:text-gray-700">—</span>
+                                            <span className="text-xs text-gray-300 dark:text-gray-600">—</span>
                                         )}
                                     </td>
                                 </>
@@ -1428,7 +1437,7 @@ export default function WorkoutTable({ runningActivities, liftingWorkouts, goals
                                                 {workout.totalSets}
                                             </span>
                                         ) : (
-                                            <span className="text-xs text-gray-300 dark:text-gray-700">—</span>
+                                            <span className="text-xs text-gray-300 dark:text-gray-600">—</span>
                                         )}
                                     </td>
                                 );
@@ -1461,7 +1470,7 @@ export default function WorkoutTable({ runningActivities, liftingWorkouts, goals
                                             // Override text format for duration
                                             const sign = diff > 0 ? '+' : diff < 0 ? '-' : '';
                                             const formattedText = Math.abs(diff) < 30 ? '—' : `${sign}${formatDuration(Math.abs(diff))}`;
-                                            const colorClass = Math.abs(diff) < 30 ? 'text-gray-300 dark:text-gray-700' : diff > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500 dark:text-red-400';
+                                            const colorClass = Math.abs(diff) < 30 ? 'text-gray-300 dark:text-gray-600' : diff > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500 dark:text-red-400';
 
                                             return (
                                                 <div
@@ -1490,7 +1499,7 @@ export default function WorkoutTable({ runningActivities, liftingWorkouts, goals
                                         })()}
                                     </td>
                                     <td className="px-2 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50 bg-green-50/30 dark:bg-green-900/10">
-                                        <span className="text-xs text-gray-300 dark:text-gray-700">—</span>
+                                        <span className="text-xs text-gray-300 dark:text-gray-600">—</span>
                                     </td>
                                 </>
                             }
@@ -1505,7 +1514,7 @@ export default function WorkoutTable({ runningActivities, liftingWorkouts, goals
                                                 {formatDuration(workout.durationSeconds)}
                                             </span>
                                         ) : (
-                                            <span className="text-xs text-gray-300 dark:text-gray-700">—</span>
+                                            <span className="text-xs text-gray-300 dark:text-gray-600">—</span>
                                         )}
                                     </td>
                                 );
@@ -1563,7 +1572,7 @@ export default function WorkoutTable({ runningActivities, liftingWorkouts, goals
                                         })()}
                                     </td>
                                     <td className="px-2 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50 bg-green-50/30 dark:bg-green-900/10">
-                                        <span className="text-xs text-gray-300 dark:text-gray-700">—</span>
+                                        <span className="text-xs text-gray-300 dark:text-gray-600">—</span>
                                     </td>
                                 </>
                             }
@@ -1578,7 +1587,7 @@ export default function WorkoutTable({ runningActivities, liftingWorkouts, goals
                                                 {workout.totalReps.toLocaleString()}
                                             </span>
                                         ) : (
-                                            <span className="text-xs text-gray-300 dark:text-gray-700">—</span>
+                                            <span className="text-xs text-gray-300 dark:text-gray-600">—</span>
                                         )}
                                     </td>
                                 );
@@ -1617,7 +1626,7 @@ export default function WorkoutTable({ runningActivities, liftingWorkouts, goals
                                             <>
                                                 {renderGoalCell(`lift_sets_${part}`, `${part.charAt(0).toUpperCase() + part.slice(1)} Sets`, volumeValue, 'number', 'sets')}
                                                 <td className="px-2 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50 bg-blue-50/30 dark:bg-blue-900/10">
-                                                    <span className={`text-xs tabular-nums ${volumeValue ? 'text-gray-900 dark:text-gray-100' : 'text-gray-300 dark:text-gray-700'}`}>
+                                                    <span className={`text-xs tabular-nums ${volumeValue ? 'text-gray-900 dark:text-gray-100' : 'text-gray-300 dark:text-gray-600'}`}>
                                                         {volumeValue
                                                             ? (volumeDisplayMode === 'volume' ? formatVolume(volumeValue) : volumeValue)
                                                             : '—'}
@@ -1675,7 +1684,7 @@ export default function WorkoutTable({ runningActivities, liftingWorkouts, goals
                                                 <td className="px-2 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50 bg-green-50/30 dark:bg-green-900/10">
                                                     {(() => {
                                                         const partsInNext = nextLiftingWorkout?.exercises.filter(ex => ex.bodyPart === part) || [];
-                                                        if (partsInNext.length === 0) return <span className="text-xs text-gray-300 dark:text-gray-700">—</span>;
+                                                        if (partsInNext.length === 0) return <span className="text-xs text-gray-300 dark:text-gray-600">—</span>;
                                                         const totalSets = partsInNext.reduce((sum, ex) => sum + ex.sets.length, 0);
 
                                                         return (
@@ -1729,7 +1738,7 @@ export default function WorkoutTable({ runningActivities, liftingWorkouts, goals
                                                             {volumeDisplayMode === 'volume' ? formatVolume(displayValue) : displayValue}
                                                         </span>
                                                     ) : (
-                                                        <span className="text-xs text-gray-300 dark:text-gray-700">—</span>
+                                                        <span className="text-xs text-gray-300 dark:text-gray-600">—</span>
                                                     )}
                                                 </td>
                                             );
@@ -1750,10 +1759,10 @@ export default function WorkoutTable({ runningActivities, liftingWorkouts, goals
                                                 fixedContent={
                                                     <>
                                                         <td className="px-2 py-1 text-center border-l border-gray-100 dark:border-gray-800/50 bg-blue-50/20 dark:bg-blue-900/10">
-                                                            <span className="text-xs text-gray-300 dark:text-gray-700">—</span>
+                                                            <span className="text-xs text-gray-300 dark:text-gray-600">—</span>
                                                         </td>
                                                         <td className="px-2 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50 bg-blue-50/20 dark:bg-blue-900/5">
-                                                            <span className="text-xs text-gray-300 dark:text-gray-700">—</span>
+                                                            <span className="text-xs text-gray-300 dark:text-gray-600">—</span>
                                                         </td>
                                                         <td className="px-2 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50 bg-gray-50/20 dark:bg-gray-800/10">
                                                             <span className="text-xs tabular-nums text-gray-600 dark:text-gray-400">
@@ -1775,10 +1784,10 @@ export default function WorkoutTable({ runningActivities, liftingWorkouts, goals
                                                             </span>
                                                         </td>
                                                         <td className="px-2 py-1 text-center border-l border-gray-100 dark:border-gray-800/50 bg-gray-50/20 dark:bg-gray-800/10">
-                                                            <span className="text-xs text-gray-300 dark:text-gray-700">—</span>
+                                                            <span className="text-xs text-gray-300 dark:text-gray-600">—</span>
                                                         </td>
                                                         <td className="px-2 py-1 text-center border-l border-gray-100 dark:border-gray-800/50 bg-green-50/30 dark:bg-green-900/10">
-                                                            <span className="text-xs text-gray-300 dark:text-gray-700">—</span>
+                                                            <span className="text-xs text-gray-300 dark:text-gray-600">—</span>
                                                         </td>
                                                     </>
                                                 }
@@ -1789,7 +1798,7 @@ export default function WorkoutTable({ runningActivities, liftingWorkouts, goals
                                                     if (!occurrence) {
                                                         return (
                                                             <td key={date} className="px-3 py-1 text-center border-l border-gray-100 dark:border-gray-800/50 bg-gray-50/30 dark:bg-gray-800/10">
-                                                                <span className="text-xs text-gray-300 dark:text-gray-700">—</span>
+                                                                <span className="text-xs text-gray-300 dark:text-gray-600">—</span>
                                                             </td>
                                                         );
                                                     }
@@ -1901,7 +1910,7 @@ export default function WorkoutTable({ runningActivities, liftingWorkouts, goals
                                     <td className="px-2 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50 bg-gray-50/30 dark:bg-gray-800/20">
                                         {(() => {
                                             const diff = trendData.milesDiff;
-                                            if (Math.abs(diff) < 0.1) return <span className="text-xs text-gray-300 dark:text-gray-700">—</span>;
+                                            if (Math.abs(diff) < 0.1) return <span className="text-xs text-gray-300 dark:text-gray-600">—</span>;
                                             const sign = diff > 0 ? '+' : '';
                                             const color = diff > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500 dark:text-red-400';
                                             return (
@@ -1954,7 +1963,7 @@ export default function WorkoutTable({ runningActivities, liftingWorkouts, goals
                                                 <span className="text-xs tabular-nums font-medium cursor-help text-green-600 dark:text-green-400">{nextRunningWorkout.distanceMiles.toFixed(1)}</span>
                                             </Tooltip>
                                         ) : (
-                                            <span className="text-xs text-gray-300 dark:text-gray-700">—</span>
+                                            <span className="text-xs text-gray-300 dark:text-gray-600">—</span>
                                         )}
                                     </td>
                                 </>
@@ -1986,7 +1995,7 @@ export default function WorkoutTable({ runningActivities, liftingWorkouts, goals
                                                 {activity.distanceMiles.toFixed(1)}
                                             </span>
                                         ) : (
-                                            <span className="text-xs text-gray-300 dark:text-gray-700">—</span>
+                                            <span className="text-xs text-gray-300 dark:text-gray-600">—</span>
                                         )}
                                     </td>
                                 );
@@ -2013,7 +2022,7 @@ export default function WorkoutTable({ runningActivities, liftingWorkouts, goals
                                         </span>
                                     </td>
                                     <td className="px-2 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50 bg-gray-50/30 dark:bg-gray-800/20">
-                                        <span className="text-xs text-gray-300 dark:text-gray-700">—</span>
+                                        <span className="text-xs text-gray-300 dark:text-gray-600">—</span>
                                     </td>
                                     <td className="px-2 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50 bg-green-50/30 dark:bg-green-900/10">
                                         {nextRunningWorkout ? (
@@ -2021,7 +2030,7 @@ export default function WorkoutTable({ runningActivities, liftingWorkouts, goals
                                                 {formatDuration(nextRunningWorkout.estimatedDurationSeconds)}
                                             </span>
                                         ) : (
-                                            <span className="text-xs text-gray-300 dark:text-gray-700">—</span>
+                                            <span className="text-xs text-gray-300 dark:text-gray-600">—</span>
                                         )}
                                     </td>
                                 </>
@@ -2037,7 +2046,7 @@ export default function WorkoutTable({ runningActivities, liftingWorkouts, goals
                                                 {formatDuration(activity.durationSeconds)}
                                             </span>
                                         ) : (
-                                            <span className="text-xs text-gray-300 dark:text-gray-700">—</span>
+                                            <span className="text-xs text-gray-300 dark:text-gray-600">—</span>
                                         )}
                                     </td>
                                 );
@@ -2055,10 +2064,10 @@ export default function WorkoutTable({ runningActivities, liftingWorkouts, goals
                                         </span>
                                     </td>
                                     <td className="px-2 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50 bg-gray-50/30 dark:bg-gray-800/20">
-                                        <span className="text-xs text-gray-300 dark:text-gray-700">—</span>
+                                        <span className="text-xs text-gray-300 dark:text-gray-600">—</span>
                                     </td>
                                     <td className="px-2 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50 bg-gray-50/30 dark:bg-gray-800/20">
-                                        <span className="text-xs text-gray-300 dark:text-gray-700">—</span>
+                                        <span className="text-xs text-gray-300 dark:text-gray-600">—</span>
                                     </td>
                                     <td className="px-2 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50 bg-green-50/30 dark:bg-green-900/10">
                                         {nextRunningWorkout ? (
@@ -2066,7 +2075,7 @@ export default function WorkoutTable({ runningActivities, liftingWorkouts, goals
                                                 {formatPace(nextRunningWorkout.targetPaceSeconds)}<span className="text-gray-400">/mi</span>
                                             </span>
                                         ) : (
-                                            <span className="text-xs text-gray-300 dark:text-gray-700">—</span>
+                                            <span className="text-xs text-gray-300 dark:text-gray-600">—</span>
                                         )}
                                     </td>
                                 </>
@@ -2082,7 +2091,7 @@ export default function WorkoutTable({ runningActivities, liftingWorkouts, goals
                                                 {formatPace(activity.averagePaceSeconds)}<span className="text-gray-400">/mi</span>
                                             </span>
                                         ) : (
-                                            <span className="text-xs text-gray-300 dark:text-gray-700">—</span>
+                                            <span className="text-xs text-gray-300 dark:text-gray-600">—</span>
                                         )}
                                     </td>
                                 );
@@ -2100,13 +2109,13 @@ export default function WorkoutTable({ runningActivities, liftingWorkouts, goals
                                         </span>
                                     </td>
                                     <td className="px-2 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50 bg-gray-50/30 dark:bg-gray-800/20">
-                                        <span className="text-xs text-gray-300 dark:text-gray-700">—</span>
+                                        <span className="text-xs text-gray-300 dark:text-gray-600">—</span>
                                     </td>
                                     <td className="px-2 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50 bg-gray-50/30 dark:bg-gray-800/20">
                                         {(() => {
                                             const current = trendData.running.currentAvgHr;
                                             const previous = trendData.running.previousAvgHr;
-                                            if (!current || !previous) return <span className="text-xs text-gray-300 dark:text-gray-700">—</span>;
+                                            if (!current || !previous) return <span className="text-xs text-gray-300 dark:text-gray-600">—</span>;
 
                                             const diff = current - previous;
                                             const { text, color } = formatTrendValue(diff, false);
@@ -2130,7 +2139,7 @@ export default function WorkoutTable({ runningActivities, liftingWorkouts, goals
                                                 {nextRunningWorkout.projectedAvgHeartrate} <span className="text-gray-400">bpm</span>
                                             </span>
                                         ) : (
-                                            <span className="text-xs text-gray-300 dark:text-gray-700">—</span>
+                                            <span className="text-xs text-gray-300 dark:text-gray-600">—</span>
                                         )}
                                     </td>
                                 </>
@@ -2146,7 +2155,7 @@ export default function WorkoutTable({ runningActivities, liftingWorkouts, goals
                                                 {activity.averageHeartrate} <span className="text-gray-400">bpm</span>
                                             </span>
                                         ) : (
-                                            <span className="text-xs text-gray-300 dark:text-gray-700">—</span>
+                                            <span className="text-xs text-gray-300 dark:text-gray-600">—</span>
                                         )}
                                     </td>
                                 );
@@ -2164,13 +2173,13 @@ export default function WorkoutTable({ runningActivities, liftingWorkouts, goals
                                         </span>
                                     </td>
                                     <td className="px-2 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50 bg-gray-50/30 dark:bg-gray-800/20">
-                                        <span className="text-xs text-gray-300 dark:text-gray-700">—</span>
+                                        <span className="text-xs text-gray-300 dark:text-gray-600">—</span>
                                     </td>
                                     <td className="px-2 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50 bg-gray-50/30 dark:bg-gray-800/20">
                                         {(() => {
                                             const current = trendData.running.currentMaxHr;
                                             const previous = trendData.running.previousMaxHr;
-                                            if (!current || !previous) return <span className="text-xs text-gray-300 dark:text-gray-700">—</span>;
+                                            if (!current || !previous) return <span className="text-xs text-gray-300 dark:text-gray-600">—</span>;
 
                                             const diff = current - previous;
                                             const { text, color } = formatTrendValue(diff, false);
@@ -2194,7 +2203,7 @@ export default function WorkoutTable({ runningActivities, liftingWorkouts, goals
                                                 {nextRunningWorkout.projectedMaxHeartrate} <span className="text-gray-400">bpm</span>
                                             </span>
                                         ) : (
-                                            <span className="text-xs text-gray-300 dark:text-gray-700">—</span>
+                                            <span className="text-xs text-gray-300 dark:text-gray-600">—</span>
                                         )}
                                     </td>
                                 </>
@@ -2210,7 +2219,7 @@ export default function WorkoutTable({ runningActivities, liftingWorkouts, goals
                                                 {activity.maxHeartrate} <span className="text-gray-400">bpm</span>
                                             </span>
                                         ) : (
-                                            <span className="text-xs text-gray-300 dark:text-gray-700">—</span>
+                                            <span className="text-xs text-gray-300 dark:text-gray-600">—</span>
                                         )}
                                     </td>
                                 );
@@ -2228,13 +2237,13 @@ export default function WorkoutTable({ runningActivities, liftingWorkouts, goals
                                         </span>
                                     </td>
                                     <td className="px-2 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50 bg-gray-50/30 dark:bg-gray-800/20">
-                                        <span className="text-xs text-gray-300 dark:text-gray-700">—</span>
+                                        <span className="text-xs text-gray-300 dark:text-gray-600">—</span>
                                     </td>
                                     <td className="px-2 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50 bg-gray-50/30 dark:bg-gray-800/20">
                                         {(() => {
                                             const current = trendData.running.currentAvgCadence;
                                             const previous = trendData.running.previousAvgCadence;
-                                            if (!current || !previous) return <span className="text-xs text-gray-300 dark:text-gray-700">—</span>;
+                                            if (!current || !previous) return <span className="text-xs text-gray-300 dark:text-gray-600">—</span>;
 
                                             const diff = current - previous;
                                             const { text, color } = formatTrendValue(diff, false);
@@ -2258,7 +2267,7 @@ export default function WorkoutTable({ runningActivities, liftingWorkouts, goals
                                                 {nextRunningWorkout.projectedCadence} <span className="text-gray-400">spm</span>
                                             </span>
                                         ) : (
-                                            <span className="text-xs text-gray-300 dark:text-gray-700">—</span>
+                                            <span className="text-xs text-gray-300 dark:text-gray-600">—</span>
                                         )}
                                     </td>
                                 </>
@@ -2274,7 +2283,7 @@ export default function WorkoutTable({ runningActivities, liftingWorkouts, goals
                                                 {activity.averageCadence} <span className="text-gray-400">spm</span>
                                             </span>
                                         ) : (
-                                            <span className="text-xs text-gray-300 dark:text-gray-700">—</span>
+                                            <span className="text-xs text-gray-300 dark:text-gray-600">—</span>
                                         )}
                                     </td>
                                 );
@@ -2304,7 +2313,7 @@ export default function WorkoutTable({ runningActivities, liftingWorkouts, goals
                                         {(() => {
                                             const current = trendData.running.currentElevationGain;
                                             const previous = trendData.running.previousElevationGain;
-                                            if (current === 0 && previous === 0) return <span className="text-xs text-gray-300 dark:text-gray-700">—</span>;
+                                            if (current === 0 && previous === 0) return <span className="text-xs text-gray-300 dark:text-gray-600">—</span>;
 
                                             const diff = current - previous;
                                             const { text, color } = formatTrendValue(diff, false);
@@ -2323,7 +2332,7 @@ export default function WorkoutTable({ runningActivities, liftingWorkouts, goals
                                         })()}
                                     </td>
                                     <td className="px-2 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50 bg-green-50/30 dark:bg-green-900/10">
-                                        <span className="text-xs text-gray-300 dark:text-gray-700">—</span>
+                                        <span className="text-xs text-gray-300 dark:text-gray-600">—</span>
                                     </td>
                                 </>
                             }
@@ -2337,7 +2346,7 @@ export default function WorkoutTable({ runningActivities, liftingWorkouts, goals
                                 if (!hasElevation) {
                                     return (
                                         <td key={date} className="px-3 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50">
-                                            <span className="text-xs text-gray-300 dark:text-gray-700">—</span>
+                                            <span className="text-xs text-gray-300 dark:text-gray-600">—</span>
                                         </td>
                                     );
                                 }
@@ -2377,16 +2386,16 @@ export default function WorkoutTable({ runningActivities, liftingWorkouts, goals
                                     <>
                                         {renderGoalCell(`run_time_${milestone.key}`, `${milestone.label} Time`, undefined, 'duration')}
                                         <td className="px-2 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50 bg-blue-50/30 dark:bg-blue-900/10">
-                                            <span className="text-xs tabular-nums text-gray-300 dark:text-gray-700">—</span>
+                                            <span className="text-xs tabular-nums text-gray-300 dark:text-gray-600">—</span>
                                         </td>
                                         <td className="px-2 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50 bg-gray-50/30 dark:bg-gray-800/20">
-                                            <span className="text-xs text-gray-300 dark:text-gray-700">—</span>
+                                            <span className="text-xs text-gray-300 dark:text-gray-600">—</span>
                                         </td>
                                         <td className="px-2 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50 bg-gray-50/30 dark:bg-gray-800/20">
-                                            <span className="text-xs text-gray-300 dark:text-gray-700">—</span>
+                                            <span className="text-xs text-gray-300 dark:text-gray-600">—</span>
                                         </td>
                                         <td className="px-2 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50 bg-green-50/30 dark:bg-green-900/10">
-                                            <span className="text-xs text-gray-300 dark:text-gray-700">—</span>
+                                            <span className="text-xs text-gray-300 dark:text-gray-600">—</span>
                                         </td>
                                     </>
                                 }
@@ -2397,7 +2406,7 @@ export default function WorkoutTable({ runningActivities, liftingWorkouts, goals
                                     if (!activity || activity.distanceMiles < milestone.miles * 0.95) {
                                         return (
                                             <td key={date} className="px-3 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50">
-                                                <span className="text-xs text-gray-300 dark:text-gray-700">—</span>
+                                                <span className="text-xs text-gray-300 dark:text-gray-600">—</span>
                                             </td>
                                         );
                                     }
@@ -2425,7 +2434,7 @@ export default function WorkoutTable({ runningActivities, liftingWorkouts, goals
                                                     })()}
                                                 </div>
                                             ) : (
-                                                <span className="text-xs text-gray-300 dark:text-gray-700">—</span>
+                                                <span className="text-xs text-gray-300 dark:text-gray-600">—</span>
                                             )}
                                         </td>
                                     );

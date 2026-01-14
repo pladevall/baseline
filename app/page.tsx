@@ -423,7 +423,7 @@ export default function Home() {
                 Sleep Tracking
               </h2>
             </div>
-            <div className="p-4">
+            <div>
               <SleepTable entries={sleepEntries} />
             </div>
           </section>

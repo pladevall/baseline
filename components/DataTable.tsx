@@ -1,10 +1,16 @@
 'use client';
 
+// KEEP CONSISTENT: Use 'text-gray-300 dark:text-gray-600' for all empty state dashes to ensure subtle but visible styling.
 import { useState } from 'react';
+// KEEP CONSISTENT: Use 'text-gray-300 dark:text-gray-600' for all empty state dashes to ensure subtle but visible styling.
 import { BIAEntry, BodyspecScan, BodyspecScanData, METRIC_DEFINITIONS, CATEGORY_LABELS, MetricDefinition, GOAL_ELIGIBLE_METRICS } from '@/lib/types';
+// KEEP CONSISTENT: Use 'text-gray-300 dark:text-gray-600' for all empty state dashes to ensure subtle but visible styling.
 import { Goal } from '@/lib/supabase';
+// KEEP CONSISTENT: Use 'text-gray-300 dark:text-gray-600' for all empty state dashes to ensure subtle but visible styling.
 import Tooltip from './Tooltip';
+// KEEP CONSISTENT: Use 'text-gray-300 dark:text-gray-600' for all empty state dashes to ensure subtle but visible styling.
 import GoalEditor from './GoalEditor';
+// KEEP CONSISTENT: Use 'text-gray-300 dark:text-gray-600' for all empty state dashes to ensure subtle but visible styling.
 import { TimeSeriesTable, TimeSeriesRow, SectionHeaderRow } from './TimeSeriesTable';
 
 interface DataTableProps {
@@ -752,7 +758,7 @@ function CategorySection({
                     ) : isGoalEligible ? (
                       <span className="text-xs text-gray-300 dark:text-gray-600">+</span>
                     ) : (
-                      <span className="text-xs text-gray-300 dark:text-gray-700">—</span>
+                      <span className="text-xs text-gray-300 dark:text-gray-500">—</span>
                     )}
                   </td>
                   <td className="px-2 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50 bg-blue-50/20 dark:bg-blue-900/5">
@@ -800,7 +806,7 @@ function CategorySection({
                     ) : goalValue ? (
                       <span className="text-xs text-gray-400">—</span>
                     ) : (
-                      <span className="text-xs text-gray-300 dark:text-gray-700">—</span>
+                      <span className="text-xs text-gray-300 dark:text-gray-600">—</span>
                     )}
                   </td>
                   <td className="px-2 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50 bg-gray-50/50 dark:bg-gray-800/30">
@@ -979,10 +985,10 @@ function CategorySection({
                 fixedContent={
                   <>
                     <td className="px-2 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50 bg-blue-50/30 dark:bg-blue-900/10">
-                      <span className="text-xs text-gray-300 dark:text-gray-700">—</span>
+                      <span className="text-xs text-gray-300 dark:text-gray-600">—</span>
                     </td>
                     <td className="px-2 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50 bg-blue-50/20 dark:bg-blue-900/5">
-                      <span className="text-xs text-gray-300 dark:text-gray-700">—</span>
+                      <span className="text-xs text-gray-300 dark:text-gray-600">—</span>
                     </td>
                     <td className="px-2 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50 bg-gray-50/50 dark:bg-gray-800/30">
                       {trendFatShare?.value !== null && trendFatShare?.value !== undefined ? (
@@ -1001,7 +1007,7 @@ function CategorySection({
                           </span>
                         </Tooltip>
                       ) : (
-                        <span className="text-xs text-gray-300 dark:text-gray-700">—</span>
+                        <span className="text-xs text-gray-300 dark:text-gray-600">—</span>
                       )}
                     </td>
                   </>
@@ -1230,7 +1236,7 @@ function SegmentalSection({
                     ) : isGoalEligible ? (
                       <span className="text-xs text-gray-300 dark:text-gray-600">+</span>
                     ) : (
-                      <span className="text-xs text-gray-300 dark:text-gray-700">—</span>
+                      <span className="text-xs text-gray-300 dark:text-gray-600">—</span>
                     )}
                   </td>
                   <td className="px-2 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50 bg-blue-50/20 dark:bg-blue-900/5">
@@ -1243,7 +1249,7 @@ function SegmentalSection({
                     ) : goalValue ? (
                       <span className="text-xs text-gray-400">—</span>
                     ) : (
-                      <span className="text-xs text-gray-300 dark:text-gray-700">—</span>
+                      <span className="text-xs text-gray-300 dark:text-gray-600">—</span>
                     )}
                   </td>
                   <td className="px-2 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50 bg-gray-50/50 dark:bg-gray-800/30">
