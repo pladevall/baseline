@@ -1,26 +1,44 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+
+// Custom event name for theme toggling
+export const THEME_TOGGLE_EVENT = 'baseline-theme-toggle';
+
+export function toggleTheme() {
+  window.dispatchEvent(new CustomEvent(THEME_TOGGLE_EVENT));
+}
 
 export default function ThemeToggle() {
   const [mounted, setMounted] = useState(false);
   const [isDark, setIsDark] = useState(false);
+
+  const updateTheme = useCallback((shouldBeDark: boolean) => {
+    setIsDark(shouldBeDark);
+    localStorage.setItem('theme', shouldBeDark ? 'dark' : 'light');
+    document.documentElement.classList.toggle('dark', shouldBeDark);
+  }, []);
+
+  const handleToggle = useCallback(() => {
+    setIsDark(prev => {
+      const newValue = !prev;
+      updateTheme(newValue);
+      return newValue;
+    });
+  }, [updateTheme]);
 
   useEffect(() => {
     setMounted(true);
     const stored = localStorage.getItem('theme');
     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
     const shouldBeDark = stored === 'dark' || (!stored && prefersDark);
-    setIsDark(shouldBeDark);
-    document.documentElement.classList.toggle('dark', shouldBeDark);
-  }, []);
+    updateTheme(shouldBeDark);
 
-  const toggle = () => {
-    const newValue = !isDark;
-    setIsDark(newValue);
-    localStorage.setItem('theme', newValue ? 'dark' : 'light');
-    document.documentElement.classList.toggle('dark', newValue);
-  };
+    const onExternalToggle = () => handleToggle();
+    window.addEventListener(THEME_TOGGLE_EVENT, onExternalToggle);
+
+    return () => window.removeEventListener(THEME_TOGGLE_EVENT, onExternalToggle);
+  }, [updateTheme, handleToggle]);
 
   // Avoid hydration mismatch
   if (!mounted) {
@@ -33,7 +51,7 @@ export default function ThemeToggle() {
 
   return (
     <button
-      onClick={toggle}
+      onClick={handleToggle}
       className="p-2 rounded-md text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors cursor-pointer"
       aria-label="Toggle theme"
     >
