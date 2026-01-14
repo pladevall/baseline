@@ -58,18 +58,31 @@ export async function POST(req: NextRequest) {
         // For now, let's process the most recent night found in the data
 
         // 1. Filter out invalid data first
+        const invalidSamples: any[] = [];
         const validSamples = sleepMetric.data.filter(s => {
+            // Check if fields exist
+            if (!s.startDate || !s.endDate) {
+                if (invalidSamples.length < 1) invalidSamples.push({ reason: 'Missing startDate/endDate', s });
+                return false;
+            }
+
             const start = new Date(s.startDate).getTime();
             const end = new Date(s.endDate).getTime();
+
             if (isNaN(start) || isNaN(end)) {
-                console.warn('Skipping invalid sample:', s);
+                if (invalidSamples.length < 1) invalidSamples.push({ reason: 'NaN date parsing', s, rawStart: s.startDate, rawEnd: s.endDate });
                 return false;
             }
             return true;
         });
 
         if (validSamples.length === 0) {
-            return NextResponse.json({ message: 'No valid sleep samples found' }, { status: 200 });
+            console.warn('No valid sleep samples found. Debug info:', invalidSamples[0]);
+            return NextResponse.json({
+                message: 'No valid sleep samples found',
+                debug: invalidSamples[0],
+                hint: 'Ensure "Aggregation" is set to "None" (OFF) in Health Auto Export.'
+            }, { status: 200 });
         }
 
         // Sort samples by date
