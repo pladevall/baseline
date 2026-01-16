@@ -23,18 +23,18 @@ export function YearGrid() {
             {/* Min-width ensures grid doesn't squash too much on mobile */}
             <div className="flex flex-col gap-0 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden shadow-sm flex-1">
                 {/* Day of Week Header */}
-                <div className="flex w-full bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
-                    {/* Month label column spacer */}
-                    <div className="w-24 flex-shrink-0 border-r border-gray-200 dark:border-gray-700" />
+                <div className="flex w-full bg-background border-b border-gray-100 dark:border-zinc-800/50">
+                    {/* Month label column spacer - match MonthRow styling */}
+                    <div className="w-24 flex-shrink-0 border-r border-gray-100 dark:border-zinc-800/50" />
 
-                    {/* Day of week headers */}
+                    {/* Day of week headers - same grid as DayCell */}
                     <div className="flex-1 grid grid-cols-[repeat(31,minmax(0,1fr))]">
                         {Array.from({ length: 31 }).map((_, dayOfMonth) => {
                             const dayOfWeek = daysOfWeek[dayOfMonth % 7];
                             return (
                                 <div
                                     key={dayOfMonth}
-                                    className="flex items-center justify-center border-r border-gray-200 dark:border-gray-700 py-2.5 text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-widest"
+                                    className="flex items-center justify-center border-r border-gray-100 dark:border-zinc-800/50 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider"
                                 >
                                     {dayOfWeek}
                                 </div>
