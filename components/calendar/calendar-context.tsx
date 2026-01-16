@@ -49,10 +49,19 @@ export function CalendarProvider({ children, initialEvents }: { children: ReactN
 
     const refreshEvents = async () => {
         const supabase = createClient();
-        const { data } = await supabase
+        const { data: { user } } = await supabase.auth.getUser();
+
+        const query = supabase
             .from('calendar_events')
             .select('*')
             .order('start_date', { ascending: true });
+
+        // Filter by user_id if user is logged in
+        if (user?.id) {
+            query.eq('user_id', user.id);
+        }
+
+        const { data } = await query;
 
         if (data) {
             setEvents(data);

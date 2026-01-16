@@ -359,7 +359,10 @@ export function MonthRow({ month, events }: MonthRowProps) {
                                         e.stopPropagation();
                                         handleResizeStart(event, 'start');
                                     }}
-                                    className="absolute left-0 top-0 bottom-0 w-1 bg-blue-400 opacity-0 group-hover/event:opacity-100 hover:bg-blue-600 cursor-col-resize transition-opacity"
+                                    className={cn(
+                                        "absolute left-0 top-0 bottom-0 w-1 bg-blue-400 hover:bg-blue-600 cursor-col-resize transition-opacity",
+                                        (resizingEvent === event.id || draggingEvent === event.id) ? "opacity-100" : "opacity-0 group-hover/event:opacity-100"
+                                    )}
                                 />
 
                                 {/* Event Title */}
@@ -371,7 +374,10 @@ export function MonthRow({ month, events }: MonthRowProps) {
                                         e.stopPropagation();
                                         handleResizeStart(event, 'end');
                                     }}
-                                    className="absolute right-0 top-0 bottom-0 w-1 bg-blue-400 opacity-0 group-hover/event:opacity-100 hover:bg-blue-600 cursor-col-resize transition-opacity"
+                                    className={cn(
+                                        "absolute right-0 top-0 bottom-0 w-1 bg-blue-400 hover:bg-blue-600 cursor-col-resize transition-opacity",
+                                        (resizingEvent === event.id || draggingEvent === event.id) ? "opacity-100" : "opacity-0 group-hover/event:opacity-100"
+                                    )}
                                 />
                             </div>
                         );
