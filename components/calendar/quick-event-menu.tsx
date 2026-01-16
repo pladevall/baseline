@@ -6,6 +6,7 @@ import { CALENDAR_CATEGORIES } from '@/lib/calendar-config';
 import { CalendarCategoryKey } from '@/types/calendar';
 import { cn } from '@/lib/utils';
 import { createClient } from '@/lib/supabase/client';
+import { useCalendar } from './calendar-context';
 
 interface QuickEventMenuProps {
     date: Date;
@@ -16,6 +17,7 @@ interface QuickEventMenuProps {
 }
 
 export function QuickEventMenu({ date, isOpen, position, onClose, onEventCreated }: QuickEventMenuProps) {
+    const { refreshEvents } = useCalendar();
     const [title, setTitle] = useState('');
     const [selectedCategory, setSelectedCategory] = useState<CalendarCategoryKey>('deep_work');
     const [isSaving, setIsSaving] = useState(false);
@@ -69,6 +71,7 @@ export function QuickEventMenu({ date, isOpen, position, onClose, onEventCreated
 
             if (!error) {
                 setTitle('');
+                await refreshEvents();
                 onEventCreated();
                 onClose();
             }

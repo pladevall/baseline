@@ -7,11 +7,12 @@ import { CALENDAR_CATEGORIES } from '@/lib/calendar-config';
 import { CalendarCategoryKey } from '@/types/calendar';
 import { cn } from '@/lib/utils';
 import { X } from 'lucide-react';
+import { useCalendar } from './calendar-context';
 
 interface BatchInputModeProps {
     isOpen: boolean;
     onClose: () => void;
-    onEventCreated: () => void;
+    onEventCreated?: () => void;
 }
 
 interface BatchEvent {
@@ -22,6 +23,7 @@ interface BatchEvent {
 }
 
 export function BatchInputMode({ isOpen, onClose, onEventCreated }: BatchInputModeProps) {
+    const { refreshEvents } = useCalendar();
     const [events, setEvents] = useState<BatchEvent[]>([]);
     const [currentEvent, setCurrentEvent] = useState<BatchEvent>({
         title: '',
@@ -73,7 +75,8 @@ export function BatchInputMode({ isOpen, onClose, onEventCreated }: BatchInputMo
                     startDate: format(new Date(), 'yyyy-MM-dd'),
                     endDate: format(new Date(), 'yyyy-MM-dd'),
                 });
-                onEventCreated();
+                await refreshEvents();
+                onEventCreated?.();
             }
         } finally {
             setIsSaving(false);
@@ -84,7 +87,8 @@ export function BatchInputMode({ isOpen, onClose, onEventCreated }: BatchInputMo
         setEvents(events.filter((_, i) => i !== index));
     };
 
-    const handleClose = () => {
+    const handleClose = async () => {
+        await refreshEvents();
         setEvents([]);
         setCurrentEvent({
             title: '',
