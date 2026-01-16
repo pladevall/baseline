@@ -60,6 +60,12 @@ function toDateKey(dateString: string): string {
     return `${year}-${month}-${day}`;
 }
 
+// Parse date string YYYY-MM-DD to local midnight for consistent comparisons
+function parseLocalDate(dateString: string): Date {
+    const [year, month, day] = dateString.split('-').map(Number);
+    return new Date(year, month - 1, day, 0, 0, 0, 0);
+}
+
 // Format date for column header
 function formatDateHeader(dateString: string): string {
     // Parse the YYYY-MM-DD string as local midnight by appending time
@@ -936,7 +942,19 @@ export default function WorkoutTable({ runningActivities, liftingWorkouts, goals
                         </div>
                     </th>
                     <th className="px-2 py-2 text-center min-w-[60px] border-l border-gray-100 dark:border-gray-800 bg-indigo-50 dark:bg-indigo-900/20">
-                        <span className="text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase">Avg</span>
+                        <Tooltip content={
+                            <div className="text-left text-xs space-y-1">
+                                <p className="font-medium">Average metrics for the selected period</p>
+                                <ul className="list-disc pl-4 space-y-0.5 text-gray-300">
+                                    <li><strong>Lifts:</strong> Average sets per workout</li>
+                                    <li><strong>Runs:</strong> Average miles per run, pace, HR, cadence, elevation</li>
+                                    <li><strong>Time Window:</strong> {volumePeriod === 'WTD' ? 'Week to date' : volumePeriod === 'MTD' ? 'Month to date' : volumePeriod === 'QTD' ? 'Quarter to date' : 'Year to date'}</li>
+                                    <li><strong>Filters:</strong> Only completed activities included</li>
+                                </ul>
+                            </div>
+                        }>
+                            <span className="text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase cursor-help">Avg</span>
+                        </Tooltip>
                     </th>
                     <th className="px-2 py-2 text-center min-w-[70px] border-l border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800">
                         <span className="text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase">Trend</span>
@@ -1245,7 +1263,7 @@ export default function WorkoutTable({ runningActivities, liftingWorkouts, goals
             >
                 {displayDates.map(date => {
                     const count = getWorkoutCountForDate(date);
-                    const d = new Date(date);
+                    const d = parseLocalDate(date);
                     const isRowHighlighted = highlightedRanges?.metricKey === 'workouts';
                     const isCurrent = isRowHighlighted && highlightedRanges && d >= highlightedRanges.current.start && d <= highlightedRanges.current.end;
                     const isPrevious = isRowHighlighted && highlightedRanges && d >= highlightedRanges.previous.start && d <= highlightedRanges.previous.end;
@@ -1283,7 +1301,18 @@ export default function WorkoutTable({ runningActivities, liftingWorkouts, goals
                         />
                         {/* Sets */}
                         <TimeSeriesRow
-                            label="Sets"
+                            label={
+                                <Tooltip content={
+                                    <div className="text-left text-xs space-y-1">
+                                        <p><strong>Total sets and average per workout</strong></p>
+                                        <p className="text-gray-300">Time Window: {volumePeriod === 'WTD' ? 'Week to date' : volumePeriod === 'MTD' ? 'Month to date' : volumePeriod === 'QTD' ? 'Quarter to date' : 'Year to date'}</p>
+                                        <p className="text-gray-300">Avg Column: Total divided by number of workouts</p>
+                                        <p className="text-gray-300">Includes: All completed lifting workouts</p>
+                                    </div>
+                                }>
+                                    <span className="cursor-help">Sets</span>
+                                </Tooltip>
+                            }
                             fixedContent={
                                 <>
                                     {renderGoalCell('lift_sets', 'Target Sets', liftingVolume.totalSets, 'number', 'sets', totalSetsGoal)}
@@ -1431,7 +1460,7 @@ export default function WorkoutTable({ runningActivities, liftingWorkouts, goals
                         >
                             {displayDates.map(date => {
                                 const workout = liftingByDate.get(date);
-                                const d = new Date(date);
+                                const d = parseLocalDate(date);
                                 const isRowHighlighted = highlightedRanges?.metricKey === 'lift_total';
                                 const isCurrent = isRowHighlighted && highlightedRanges && d >= highlightedRanges.current.start && d <= highlightedRanges.current.end;
                                 const isPrevious = isRowHighlighted && highlightedRanges && d >= highlightedRanges.previous.start && d <= highlightedRanges.previous.end;
@@ -1735,7 +1764,7 @@ export default function WorkoutTable({ runningActivities, liftingWorkouts, goals
                                                 ? stats?.sets
                                                 : stats?.volumeLbs;
 
-                                            const d = new Date(date);
+                                            const d = parseLocalDate(date);
                                             const isRowHighlighted = highlightedRanges?.metricKey === part;
                                             const isCurrent = isRowHighlighted && highlightedRanges && d >= highlightedRanges.current.start && d <= highlightedRanges.current.end;
                                             const isPrevious = isRowHighlighted && highlightedRanges && d >= highlightedRanges.previous.start && d <= highlightedRanges.previous.end;
@@ -2004,7 +2033,7 @@ export default function WorkoutTable({ runningActivities, liftingWorkouts, goals
                         >
                             {displayDates.map(date => {
                                 const activity = runningByDate.get(date);
-                                const d = new Date(date);
+                                const d = parseLocalDate(date);
                                 const isRowHighlighted = highlightedRanges?.metricKey === 'run_miles';
                                 const isCurrent = isRowHighlighted && highlightedRanges && d >= highlightedRanges.current.start && d <= highlightedRanges.current.end;
                                 const isPrevious = isRowHighlighted && highlightedRanges && d >= highlightedRanges.previous.start && d <= highlightedRanges.previous.end;
@@ -2086,7 +2115,17 @@ export default function WorkoutTable({ runningActivities, liftingWorkouts, goals
                         </TimeSeriesRow>
                         {/* Pace */}
                         <TimeSeriesRow
-                            label="Avg Pace"
+                            label={
+                                <Tooltip content={
+                                    <div className="text-left text-xs space-y-1">
+                                        <p><strong>Average pace per run</strong></p>
+                                        <p className="text-gray-300">Time Window: {volumePeriod === 'WTD' ? 'Week to date' : volumePeriod === 'MTD' ? 'Month to date' : volumePeriod === 'QTD' ? 'Quarter to date' : 'Year to date'}</p>
+                                        <p className="text-gray-300">Includes: All completed runs with timing data</p>
+                                    </div>
+                                }>
+                                    <span className="cursor-help">Avg Pace</span>
+                                </Tooltip>
+                            }
                             fixedContent={
                                 <>
                                     {renderGoalCell('run_pace', 'Target Pace', runningVolume.averagePace, 'pace', '/mi')}
@@ -2131,7 +2170,18 @@ export default function WorkoutTable({ runningActivities, liftingWorkouts, goals
                         </TimeSeriesRow>
                         {/* Avg Heart Rate */}
                         <TimeSeriesRow
-                            label="Avg HR"
+                            label={
+                                <Tooltip content={
+                                    <div className="text-left text-xs space-y-1">
+                                        <p><strong>Average heart rate per run</strong></p>
+                                        <p className="text-gray-300">Time Window: {volumePeriod === 'WTD' ? 'Week to date' : volumePeriod === 'MTD' ? 'Month to date' : volumePeriod === 'QTD' ? 'Quarter to date' : 'Year to date'}</p>
+                                        <p className="text-gray-300">Includes: All completed runs with HR data</p>
+                                        <p className="text-gray-300">Calculation: Weighted average based on duration</p>
+                                    </div>
+                                }>
+                                    <span className="cursor-help">Avg HR</span>
+                                </Tooltip>
+                            }
                             fixedContent={
                                 <>
                                     {renderGoalCell('run_avg_hr', 'Target Avg HR', runningVolume.weightedAvgHr, 'number', 'bpm')}
@@ -2259,7 +2309,18 @@ export default function WorkoutTable({ runningActivities, liftingWorkouts, goals
                         </TimeSeriesRow>
                         {/* Cadence */}
                         <TimeSeriesRow
-                            label="Cadence"
+                            label={
+                                <Tooltip content={
+                                    <div className="text-left text-xs space-y-1">
+                                        <p><strong>Average cadence (steps per minute)</strong></p>
+                                        <p className="text-gray-300">Time Window: {volumePeriod === 'WTD' ? 'Week to date' : volumePeriod === 'MTD' ? 'Month to date' : volumePeriod === 'QTD' ? 'Quarter to date' : 'Year to date'}</p>
+                                        <p className="text-gray-300">Includes: All completed runs with cadence data</p>
+                                        <p className="text-gray-300">Calculation: Weighted average based on duration</p>
+                                    </div>
+                                }>
+                                    <span className="cursor-help">Cadence</span>
+                                </Tooltip>
+                            }
                             fixedContent={
                                 <>
                                     {renderGoalCell('run_cadence', 'Target Cadence', runningVolume.weightedAvgCadence, 'number', 'spm')}
