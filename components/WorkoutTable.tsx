@@ -915,10 +915,11 @@ export default function WorkoutTable({ runningActivities, liftingWorkouts, goals
                         <span className="text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase">Goal</span>
                     </th>
                     <th className="px-2 py-2 text-center min-w-[80px] border-l border-gray-100 dark:border-gray-800 bg-blue-50 dark:bg-blue-900/40">
-                        <div className="flex flex-col items-center gap-1">
+                        <div className={`flex flex-col items-center ${workoutType === 'run' ? 'justify-center' : 'gap-1'}`}>
                             <span className="text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase">Workload</span>
+                            {workoutType !== 'run' && (
                             <div className="flex gap-0.5">
-                                {workoutType !== 'run' && (['sets', 'volume'] as VolumeDisplayMode[]).map(mode => (
+                                {(['sets', 'volume'] as VolumeDisplayMode[]).map(mode => (
                                     <button
                                         key={mode}
                                         onClick={() => setVolumeDisplayMode(mode)}
@@ -931,6 +932,7 @@ export default function WorkoutTable({ runningActivities, liftingWorkouts, goals
                                     </button>
                                 ))}
                             </div>
+                            )}
                         </div>
                     </th>
                     <th className="px-2 py-2 text-center min-w-[60px] border-l border-gray-100 dark:border-gray-800 bg-indigo-50 dark:bg-indigo-900/20">
@@ -1375,9 +1377,13 @@ export default function WorkoutTable({ runningActivities, liftingWorkouts, goals
                                                                             prType = 'Best 1RM';
                                                                         }
 
+                                                                        const isCompound = COMPOUND_EXERCISES.some(c => ex.name.toLowerCase().includes(c));
                                                                         return (<div key={i} className="mb-1.5 last:mb-0">
                                                                             <div className="flex items-center gap-2">
                                                                                 <span className="font-medium text-gray-200">{ex.name}</span>
+                                                                                <span className={`text-[8px] font-bold px-1 py-px rounded border ${isCompound ? 'bg-blue-500/20 text-blue-400 border-blue-500/40' : 'bg-gray-500/20 text-gray-300 border-gray-500/40'}`}>
+                                                                                    {isCompound ? 'C' : 'A'}
+                                                                                </span>
                                                                                 {prType && (
                                                                                     <span className="text-[9px] bg-yellow-500/10 text-yellow-500 px-1 py-px rounded border border-yellow-500/20 whitespace-nowrap">
                                                                                         {prType}

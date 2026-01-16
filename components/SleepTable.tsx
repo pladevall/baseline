@@ -91,7 +91,7 @@ export function SleepTable({ entries }: SleepTableProps) {
 
     return (
         <TimeSeriesTable
-            headerLabel="Sleep"
+            headerLabel="Metric"
             columns={sortedEntries}
             headerFixedContent={
                 <th className="px-2 py-2 text-center min-w-[70px] border-l border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800">
