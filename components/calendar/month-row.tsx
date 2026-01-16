@@ -24,9 +24,12 @@ interface PositionedEventStrip extends CalendarEvent {
 export function MonthRow({ month, events }: MonthRowProps) {
     const [resizingEvent, setResizingEvent] = useState<string | null>(null);
     const [resizeHandle, setResizeHandle] = useState<'start' | 'end' | null>(null);
+    const [draggingEvent, setDraggingEvent] = useState<string | null>(null);
+    const [dragStartIndex, setDragStartIndex] = useState<number | null>(null);
     const [previewIndex, setPreviewIndex] = useState<number | null>(null);
     const containerRef = useRef<HTMLDivElement>(null);
     const resizingEventRef = useRef<PositionedEventStrip | null>(null);
+    const draggingEventRef = useRef<PositionedEventStrip | null>(null);
 
     const { openModal, refreshEvents } = useCalendar();
 
@@ -107,8 +110,8 @@ export function MonthRow({ month, events }: MonthRowProps) {
     }, [days, events]);
 
     const handleEventClick = (event: PositionedEventStrip, e: React.MouseEvent) => {
-        // Don't open modal if we just finished resizing
-        if (resizingEvent) return;
+        // Don't open modal if we just finished resizing or dragging
+        if (resizingEvent || draggingEvent) return;
         e.stopPropagation();
         openModal(event);
     };
@@ -117,6 +120,18 @@ export function MonthRow({ month, events }: MonthRowProps) {
         resizingEventRef.current = event;
         setResizingEvent(event.id);
         setResizeHandle(handle);
+    };
+
+    const handleDragStart = (event: PositionedEventStrip, e: React.MouseEvent) => {
+        // Only allow drag from the middle of the event, not from the edges (handles)
+        if (e.clientX < e.currentTarget.getBoundingClientRect().left + 8 ||
+            e.clientX > e.currentTarget.getBoundingClientRect().right - 8) {
+            return;
+        }
+        e.stopPropagation();
+        draggingEventRef.current = event;
+        setDraggingEvent(event.id);
+        setDragStartIndex(event.startIndex);
     };
 
     const handleResizeEnd = async (event: PositionedEventStrip, handle: 'start' | 'end', newIndex: number) => {
@@ -135,6 +150,22 @@ export function MonthRow({ month, events }: MonthRowProps) {
         setResizeHandle(null);
     };
 
+    const handleDragEnd = async (event: PositionedEventStrip, newStartIndex: number) => {
+        const offset = newStartIndex - event.startIndex;
+        const duration = event.endIndex - event.startIndex;
+        const newEndIndex = newStartIndex + duration;
+
+        if (newStartIndex >= 0 && newEndIndex < days.length) {
+            const newStartDate = format(days[newStartIndex], 'yyyy-MM-dd');
+            const newEndDate = format(days[newEndIndex], 'yyyy-MM-dd');
+            await updateEventDate(event.id, newStartDate, newEndDate);
+        }
+
+        setDraggingEvent(null);
+        setDragStartIndex(null);
+        draggingEventRef.current = null;
+    };
+
     const updateEventDate = async (eventId: string, startDate: string, endDate: string) => {
         const supabase = createClient();
         const { error } = await supabase
@@ -147,7 +178,7 @@ export function MonthRow({ month, events }: MonthRowProps) {
         }
     };
 
-    // Handle document-level mouse events for dragging
+    // Handle document-level mouse events for resizing
     useEffect(() => {
         if (!resizingEvent || !resizeHandle || !containerRef.current) return;
 
@@ -187,6 +218,49 @@ export function MonthRow({ month, events }: MonthRowProps) {
             document.removeEventListener('mouseup', handleMouseUp);
         };
     }, [resizingEvent, resizeHandle, days]);
+
+    // Handle document-level mouse events for dragging
+    useEffect(() => {
+        if (!draggingEvent || !containerRef.current) return;
+
+        const handleMouseMove = (e: MouseEvent) => {
+            // Calculate day index based on mouse position and update preview
+            const rect = containerRef.current!.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const dayIndex = Math.floor((x / rect.width) * 31);
+
+            if (dayIndex >= 0 && dayIndex < days.length) {
+                setPreviewIndex(dayIndex);
+            }
+        };
+
+        const handleMouseUp = async (e: MouseEvent) => {
+            if (!draggingEventRef.current || dragStartIndex === null) return;
+
+            const rect = containerRef.current!.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const dayIndex = Math.floor((x / rect.width) * 31);
+
+            if (dayIndex >= 0 && dayIndex < days.length) {
+                await handleDragEnd(draggingEventRef.current, dayIndex);
+            } else {
+                // Reset if dropped outside valid range
+                setDraggingEvent(null);
+                setDragStartIndex(null);
+                draggingEventRef.current = null;
+            }
+
+            setPreviewIndex(null);
+        };
+
+        document.addEventListener('mousemove', handleMouseMove);
+        document.addEventListener('mouseup', handleMouseUp);
+
+        return () => {
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseup', handleMouseUp);
+        };
+    }, [draggingEvent, dragStartIndex, days]);
 
     // Calculate the max number of lanes for height
     const maxLanes = useMemo(() => {
@@ -229,7 +303,7 @@ export function MonthRow({ month, events }: MonthRowProps) {
                         const cat = CALENDAR_CATEGORIES[event.category];
                         const dayWidth = 100 / 31; // Each day is 1/31 of the width
 
-                        // Calculate preview position if resizing this event
+                        // Calculate preview position if resizing or dragging this event
                         let displayStartIndex = event.startIndex;
                         let displayEndIndex = event.endIndex;
 
@@ -239,6 +313,11 @@ export function MonthRow({ month, events }: MonthRowProps) {
                             } else if (resizeHandle === 'end') {
                                 displayEndIndex = Math.max(previewIndex, event.startIndex);
                             }
+                        } else if (draggingEvent === event.id && previewIndex !== null) {
+                            const offset = previewIndex - event.startIndex;
+                            const duration = event.endIndex - event.startIndex;
+                            displayStartIndex = previewIndex;
+                            displayEndIndex = previewIndex + duration;
                         }
 
                         const leftPercent = (displayStartIndex * dayWidth);
@@ -248,15 +327,21 @@ export function MonthRow({ month, events }: MonthRowProps) {
                         return (
                             <div
                                 key={event.id}
+                                onMouseDown={(e) => {
+                                    // Check if we're clicking on a resize handle
+                                    if (e.target !== e.currentTarget) return;
+                                    handleDragStart(event, e);
+                                }}
                                 onClick={(e) => {
                                     e.stopPropagation();
                                     handleEventClick(event, e);
                                 }}
                                 className={cn(
-                                    "absolute h-4 flex items-center px-1.5 text-[10px] font-medium cursor-pointer pointer-events-auto group/event",
+                                    "absolute h-4 flex items-center px-1.5 text-[10px] font-medium pointer-events-auto group/event",
+                                    draggingEvent === event.id ? "cursor-grabbing" : "cursor-grab",
                                     resizingEvent === event.id ? "" : "transition-all",
                                     "rounded shadow-sm hover:shadow-md hover:z-30",
-                                    resizingEvent === event.id && "opacity-75",
+                                    (resizingEvent === event.id || draggingEvent === event.id) && "opacity-75",
                                     cat.color,
                                     cat.textColor,
                                 )}

@@ -19,9 +19,9 @@ export default async function CalendarPage() {
         <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-950 transition-colors">
             <DesktopGuard>
                 <CalendarProvider initialEvents={events || []}>
-                    <div className="max-w-7xl mx-auto px-3 sm:px-4 py-4 sm:py-6 flex flex-col flex-1 min-h-0">
+                    <div className="max-w-7xl mx-auto px-3 sm:px-4 py-3 sm:py-4 flex flex-col flex-1 min-h-0">
                         {/* Header matching exactly app/page.tsx */}
-                        <header className="flex items-center justify-between mb-6 flex-shrink-0">
+                        <header className="flex items-center justify-between mb-3 sm:mb-4 flex-shrink-0">
                             <div>
                                 <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">2026</h1>
                                 <p className="text-sm text-gray-500 dark:text-gray-400">
