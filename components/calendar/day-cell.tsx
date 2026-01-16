@@ -50,6 +50,8 @@ export function DayCell({ date, month, events }: DayCellProps) {
 
     // Handlers
     const handleMouseDown = (e: React.MouseEvent) => {
+        // Only allow left-click (button 0) for drag selection
+        if (e.button !== 0) return;
         e.preventDefault();
         setIsDragging(true);
         setSelectionStart(date);
