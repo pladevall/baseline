@@ -23,25 +23,18 @@ export function EventModal() {
     useEffect(() => {
         const style = document.createElement('style');
         style.textContent = `
+            /* Calendar picker popover styling - force dark mode for modal */
+            input[type="date"] {
+                color-scheme: dark;
+            }
+
             /* Calendar icon styling */
             input[type="date"]::-webkit-calendar-picker-indicator {
-                filter: invert(0.7) brightness(1.1);
+                filter: invert(1) brightness(0.9);
                 cursor: pointer;
             }
             input[type="date"]::-webkit-calendar-picker-indicator:hover {
-                filter: invert(0.8) brightness(1.2);
-            }
-
-            .dark input[type="date"]::-webkit-calendar-picker-indicator {
-                filter: invert(1) brightness(0.9);
-            }
-            .dark input[type="date"]::-webkit-calendar-picker-indicator:hover {
                 filter: invert(1) brightness(1);
-            }
-
-            /* Calendar picker popover styling */
-            input[type="date"] {
-                color-scheme: light dark;
             }
 
             /* Webkit browsers (Chrome, Safari, Edge) */
@@ -51,13 +44,6 @@ export function EventModal() {
 
             input[type="date"]::-webkit-datetime-edit-fields-wrapper {
                 padding: 0;
-            }
-
-            /* Firefox calendar picker background */
-            @supports (selector(::-moz-calendar-picker)) {
-                input[type="date"] {
-                    color-scheme: light dark;
-                }
             }
         `;
         document.head.appendChild(style);
@@ -81,6 +67,41 @@ export function EventModal() {
         }
         setDeleteConfirm(false);
     }, [isModalOpen, selectedEvent, modalStartDate, modalEndDate]);
+
+    // Handle keyboard shortcuts
+    useEffect(() => {
+        if (!isModalOpen) return;
+
+        const handleKeyDown = (e: KeyboardEvent) => {
+            // Escape to close
+            if (e.key === 'Escape') {
+                closeModal();
+                return;
+            }
+
+            // Ctrl/Cmd + Enter to save
+            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                e.preventDefault();
+                if (title.trim()) {
+                    handleSave();
+                }
+                return;
+            }
+
+            // Alt/Cmd + number to select category
+            if ((e.altKey || e.metaKey) && e.key >= '1' && e.key <= '4') {
+                e.preventDefault();
+                const categories = Object.keys(CALENDAR_CATEGORIES) as CalendarCategoryKey[];
+                const index = parseInt(e.key) - 1;
+                if (index < categories.length) {
+                    setCategory(categories[index]);
+                }
+            }
+        };
+
+        document.addEventListener('keydown', handleKeyDown);
+        return () => document.removeEventListener('keydown', handleKeyDown);
+    }, [isModalOpen, title, closeModal]);
 
     if (!isModalOpen || !startDate || !endDate) return null;
 
@@ -245,20 +266,24 @@ export function EventModal() {
                     <div>
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-400 mb-2">Category</label>
                         <div className="grid grid-cols-2 gap-2">
-                            {Object.values(CALENDAR_CATEGORIES).map((cat) => (
+                            {Object.values(CALENDAR_CATEGORIES).map((cat, idx) => (
                                 <button
                                     key={cat.key}
                                     onClick={() => setCategory(cat.key)}
                                     disabled={isSaving || isDeleting}
+                                    title={`Press ⌘${idx + 1} to select`}
                                     className={cn(
-                                        "flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-all border",
+                                        "flex items-center justify-between px-3 py-2 rounded-md text-sm transition-all border",
                                         category === cat.key
                                             ? cn(cat.color, cat.borderColor, "border") // Explicit border color from config
                                             : "bg-white dark:bg-zinc-900 border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-zinc-800 disabled:opacity-50"
                                     )}
                                 >
-                                    <div className={cn("w-2.5 h-2.5 rounded-full", cat.dotColor)} />
-                                    <span className={cn("font-medium", category === cat.key ? cat.textColor : "")}>{cat.label}</span>
+                                    <div className="flex items-center gap-2">
+                                        <div className={cn("w-2.5 h-2.5 rounded-full", cat.dotColor)} />
+                                        <span className={cn("font-medium", category === cat.key ? cat.textColor : "")}>{cat.label}</span>
+                                    </div>
+                                    <span className={cn("text-xs font-normal", category === cat.key ? cat.textColor : "text-gray-500 dark:text-gray-600")}>{idx + 1}</span>
                                 </button>
                             ))}
                         </div>
@@ -272,6 +297,7 @@ export function EventModal() {
                             className="flex-1 bg-gray-800 dark:bg-gray-700 text-white font-medium py-2.5 rounded-md hover:bg-gray-700 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                         >
                             {isSaving ? 'Saving...' : isEditMode ? 'Update Event' : 'Save Event'}
+                            <span className="text-xs font-normal text-gray-300 ml-1">(⌘⏎)</span>
                         </button>
 
                         {isEditMode && (
