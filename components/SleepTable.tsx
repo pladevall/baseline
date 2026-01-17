@@ -86,7 +86,7 @@ function calculateAverage(
 }
 
 export function SleepTable({ entries }: SleepTableProps) {
-    const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['timing', 'stages', 'interruptions', 'additional']));
+    const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['overview', 'timing', 'stages', 'interruptions']));
     const [trendPeriod, setTrendPeriod] = useState<TrendPeriod>('7');
 
     const toggleSection = (section: string) => {
@@ -221,17 +221,66 @@ export function SleepTable({ entries }: SleepTableProps) {
                 </th>
             )}
         >
-            {/* Timing Section */}
+            {/* Overview Section */}
             <SectionHeaderRow
-                label="Timing"
-                isExpanded={expandedSections.has('timing')}
-                onToggle={() => toggleSection('timing')}
+                label="Overview"
+                isExpanded={expandedSections.has('overview')}
+                onToggle={() => toggleSection('overview')}
                 columnCount={sortedEntries.length}
                 fixedCellsCount={2}
             />
 
-            {expandedSections.has('timing') && (
+            {expandedSections.has('overview') && (
                 <>
+                    <TimeSeriesRow
+                        label={
+                            <div className="flex items-center gap-1">
+                                Sleep Score
+                                <Tooltip content={
+                                    <div className="space-y-2">
+                                        <p>Overall sleep quality score (0-100) based on three key components:</p>
+                                        <ul className="list-disc pl-4 space-y-1">
+                                            <li><span className="font-medium text-emerald-500">Duration (50 pts):</span> Total time asleep vs target.</li>
+                                            <li><span className="font-medium text-emerald-500">Bedtime (30 pts):</span> Consistency with target bedtime.</li>
+                                            <li><span className="font-medium text-emerald-500">Interruptions (20 pts):</span> Number and duration of wake-ups.</li>
+                                        </ul>
+                                    </div>
+                                }>
+                                    <svg className="w-3 h-3 text-gray-400 cursor-help" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                </Tooltip>
+                            </div>
+                        }
+                        fixedContent={
+                            <>
+                                {renderAverageCell((e) => e.sleepScore, false)}
+                                {renderTrendCell(latestEntry?.sleepScore, comparisonEntry?.sleepScore, true)}
+                            </>
+                        }
+                        columns={sortedEntries}
+                        renderCell={(entry) => (
+                            <td key={entry.id} className="px-3 py-2 text-center border-l border-gray-100 dark:border-gray-800/50">
+                                <div className="flex flex-col items-center gap-1">
+                                    <span className={`text-sm font-bold ${getScoreColor(entry.sleepScore)}`}>
+                                        {entry.sleepScore}
+                                    </span>
+                                    {/* Breakdown */}
+                                    <div className="flex gap-1 text-[9px] text-gray-400">
+                                        <Tooltip content={`Duration: ${entry.durationScore}/50`}>
+                                            <span className="px-1 bg-gray-100/50 dark:bg-gray-800/50 rounded tabular-nums">{entry.durationScore}/50</span>
+                                        </Tooltip>
+                                        <Tooltip content={`Bedtime: ${entry.bedtimeScore}/30`}>
+                                            <span className="px-1 bg-gray-100/50 dark:bg-gray-800/50 rounded tabular-nums">{entry.bedtimeScore}/30</span>
+                                        </Tooltip>
+                                        <Tooltip content={`Interruptions: ${entry.interruptionScore}/20`}>
+                                            <span className="px-1 bg-gray-100/50 dark:bg-gray-800/50 rounded tabular-nums">{entry.interruptionScore}/20</span>
+                                        </Tooltip>
+                                    </div>
+                                </div>
+                            </td>
+                        )}
+                    />
                     <TimeSeriesRow
                         label={
                             <div className="flex items-center gap-1">
@@ -258,6 +307,20 @@ export function SleepTable({ entries }: SleepTableProps) {
                             </td>
                         )}
                     />
+                </>
+            )}
+
+            {/* Timing Section */}
+            <SectionHeaderRow
+                label="Timing"
+                isExpanded={expandedSections.has('timing')}
+                onToggle={() => toggleSection('timing')}
+                columnCount={sortedEntries.length}
+                fixedCellsCount={2}
+            />
+
+            {expandedSections.has('timing') && (
+                <>
                     <TimeSeriesRow
                         label={
                             <div className="flex items-center gap-1">
@@ -507,69 +570,6 @@ export function SleepTable({ entries }: SleepTableProps) {
                                 <span className="text-xs tabular-nums font-medium text-gray-700 dark:text-gray-300">
                                     {formatDuration(entry.data.interruptions.interruptionsDurationMinutes ?? entry.data.interruptions.totalMinutes)}
                                 </span>
-                            </td>
-                        )}
-                    />
-                </>
-            )}
-
-            {/* Additional Data Section */}
-            <SectionHeaderRow
-                label="Additional Data"
-                isExpanded={expandedSections.has('additional')}
-                onToggle={() => toggleSection('additional')}
-                columnCount={sortedEntries.length}
-                fixedCellsCount={2}
-            />
-
-            {expandedSections.has('additional') && (
-                <>
-                    <TimeSeriesRow
-                        label={
-                            <div className="flex items-center gap-1">
-                                Sleep Score
-                                <Tooltip content={
-                                    <div className="space-y-2">
-                                        <p>Overall sleep quality score (0-100) based on three key components:</p>
-                                        <ul className="list-disc pl-4 space-y-1">
-                                            <li><span className="font-medium text-emerald-500">Duration (50 pts):</span> Total time asleep vs target.</li>
-                                            <li><span className="font-medium text-emerald-500">Bedtime (30 pts):</span> Consistency with target bedtime.</li>
-                                            <li><span className="font-medium text-emerald-500">Interruptions (20 pts):</span> Number and duration of wake-ups.</li>
-                                        </ul>
-                                    </div>
-                                }>
-                                    <svg className="w-3 h-3 text-gray-400 cursor-help" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                    </svg>
-                                </Tooltip>
-                            </div>
-                        }
-                        fixedContent={
-                            <>
-                                {renderAverageCell((e) => e.sleepScore, false)}
-                                {renderTrendCell(latestEntry?.sleepScore, comparisonEntry?.sleepScore, true)}
-                            </>
-                        }
-                        columns={sortedEntries}
-                        renderCell={(entry) => (
-                            <td key={entry.id} className="px-3 py-2 text-center border-l border-gray-100 dark:border-gray-800/50">
-                                <div className="flex flex-col items-center gap-1">
-                                    <span className={`text-sm font-bold ${getScoreColor(entry.sleepScore)}`}>
-                                        {entry.sleepScore}
-                                    </span>
-                                    {/* Breakdown */}
-                                    <div className="flex gap-1 text-[9px] text-gray-400">
-                                        <Tooltip content={`Duration: ${entry.durationScore}/50`}>
-                                            <span className="px-1 bg-gray-100/50 dark:bg-gray-800/50 rounded tabular-nums">{entry.durationScore}/50</span>
-                                        </Tooltip>
-                                        <Tooltip content={`Bedtime: ${entry.bedtimeScore}/30`}>
-                                            <span className="px-1 bg-gray-100/50 dark:bg-gray-800/50 rounded tabular-nums">{entry.bedtimeScore}/30</span>
-                                        </Tooltip>
-                                        <Tooltip content={`Interruptions: ${entry.interruptionScore}/20`}>
-                                            <span className="px-1 bg-gray-100/50 dark:bg-gray-800/50 rounded tabular-nums">{entry.interruptionScore}/20</span>
-                                        </Tooltip>
-                                    </div>
-                                </div>
                             </td>
                         )}
                     />
