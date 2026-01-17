@@ -85,6 +85,52 @@ function calculateAverage(
     return sum / values.length;
 }
 
+function calculateAverageTime(
+    entries: SleepEntry[],
+    period: TrendPeriod,
+    getTime: (entry: SleepEntry) => string
+): string | undefined {
+    if (entries.length === 0) return undefined;
+
+    const now = new Date();
+    let cutoffDate: Date;
+
+    if (period === 'YTD') {
+        cutoffDate = new Date(now.getFullYear(), 0, 1);
+    } else {
+        const days = parseInt(period);
+        cutoffDate = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+    }
+
+    // Filter entries within the period
+    const entriesInPeriod = entries.filter(entry => {
+        const entryDate = new Date(entry.sleepDate);
+        return entryDate >= cutoffDate;
+    });
+
+    if (entriesInPeriod.length === 0) return undefined;
+
+    // Convert times to minutes from midnight and average
+    const times = entriesInPeriod.map(entry => {
+        const timeStr = getTime(entry);
+        if (!timeStr) return undefined;
+        const date = new Date(timeStr);
+        return date.getHours() * 60 + date.getMinutes();
+    }).filter((t): t is number => t !== undefined);
+
+    if (times.length === 0) return undefined;
+
+    const avgMinutes = times.reduce((acc, val) => acc + val, 0) / times.length;
+    const hours = Math.floor(avgMinutes / 60);
+    const minutes = Math.round(avgMinutes % 60);
+
+    // Create a date object with the average time
+    const avgDate = new Date();
+    avgDate.setHours(hours, minutes, 0, 0);
+
+    return avgDate.toISOString();
+}
+
 export function SleepTable({ entries }: SleepTableProps) {
     const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['overview', 'timing', 'stages', 'interruptions']));
     const [trendPeriod, setTrendPeriod] = useState<TrendPeriod>('7');
@@ -167,6 +213,33 @@ export function SleepTable({ entries }: SleepTableProps) {
         }
 
         const displayValue = isDuration ? formatDuration(avg) : avg.toFixed(1);
+        const periodLabel = getTrendPeriodLabel(trendPeriod);
+
+        return (
+            <td className="px-2 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50 bg-blue-50/30 dark:bg-blue-900/10">
+                <Tooltip content={`Average over ${periodLabel}`}>
+                    <span className="text-xs tabular-nums font-medium cursor-help text-gray-700 dark:text-gray-300">
+                        {displayValue}
+                    </span>
+                </Tooltip>
+            </td>
+        );
+    };
+
+    const renderAverageTimeCell = (
+        getTime: (entry: SleepEntry) => string
+    ) => {
+        const avgTime = calculateAverageTime(sortedEntries, trendPeriod, getTime);
+
+        if (avgTime === undefined) {
+            return (
+                <td className="px-2 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50 bg-blue-50/30 dark:bg-blue-900/10">
+                    <span className="text-xs text-gray-300 dark:text-gray-600">—</span>
+                </td>
+            );
+        }
+
+        const displayValue = formatTime(avgTime);
         const periodLabel = getTrendPeriodLabel(trendPeriod);
 
         return (
@@ -334,9 +407,7 @@ export function SleepTable({ entries }: SleepTableProps) {
                         }
                         fixedContent={
                             <>
-                                <td className="px-2 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50 bg-blue-50/30 dark:bg-blue-900/10">
-                                    <span className="text-xs text-gray-300 dark:text-gray-600">—</span>
-                                </td>
+                                {renderAverageTimeCell((e) => e.data.sleepStart)}
                                 <td className="px-2 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50 bg-gray-50/50 dark:bg-gray-800/20">
                                     <span className="text-xs text-gray-300 dark:text-gray-600">—</span>
                                 </td>
@@ -364,9 +435,7 @@ export function SleepTable({ entries }: SleepTableProps) {
                         }
                         fixedContent={
                             <>
-                                <td className="px-2 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50 bg-blue-50/30 dark:bg-blue-900/10">
-                                    <span className="text-xs text-gray-300 dark:text-gray-600">—</span>
-                                </td>
+                                {renderAverageTimeCell((e) => e.data.sleepEnd)}
                                 <td className="px-2 py-1.5 text-center border-l border-gray-100 dark:border-gray-800/50 bg-gray-50/50 dark:bg-gray-800/20">
                                     <span className="text-xs text-gray-300 dark:text-gray-600">—</span>
                                 </td>
@@ -543,32 +612,6 @@ export function SleepTable({ entries }: SleepTableProps) {
                             <td key={entry.id} className="px-3 py-2 text-center border-l border-gray-100 dark:border-gray-800/50">
                                 <span className="text-xs tabular-nums font-medium text-gray-700 dark:text-gray-300">
                                     {entry.data.interruptions.wakeUpsCount ?? entry.data.interruptions.count}
-                                </span>
-                            </td>
-                        )}
-                    />
-                    <TimeSeriesRow
-                        label={
-                            <div className="flex items-center gap-1">
-                                Interruption Time
-                                <Tooltip content="Total duration of all wake-ups and restless periods.">
-                                    <svg className="w-3 h-3 text-gray-400 cursor-help" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                    </svg>
-                                </Tooltip>
-                            </div>
-                        }
-                        fixedContent={
-                            <>
-                                {renderAverageCell((e) => e.data.interruptions.interruptionsDurationMinutes ?? e.data.interruptions.totalMinutes, true)}
-                                {renderTrendCell(latestEntry?.data.interruptions.interruptionsDurationMinutes ?? latestEntry?.data.interruptions.totalMinutes, comparisonEntry?.data.interruptions.interruptionsDurationMinutes ?? comparisonEntry?.data.interruptions.totalMinutes, false, true)}
-                            </>
-                        }
-                        columns={sortedEntries}
-                        renderCell={(entry) => (
-                            <td key={entry.id} className="px-3 py-2 text-center border-l border-gray-100 dark:border-gray-800/50">
-                                <span className="text-xs tabular-nums font-medium text-gray-700 dark:text-gray-300">
-                                    {formatDuration(entry.data.interruptions.interruptionsDurationMinutes ?? entry.data.interruptions.totalMinutes)}
                                 </span>
                             </td>
                         )}
