@@ -27,6 +27,10 @@ interface CalendarContextType {
     // Data Management
     events: CalendarEvent[];
     refreshEvents: () => Promise<void>;
+
+    // Wide Mode
+    isWideMode: boolean;
+    toggleWideMode: () => void;
 }
 
 const CalendarContext = createContext<CalendarContextType | undefined>(undefined);
@@ -40,6 +44,21 @@ export function CalendarProvider({ children, initialEvents }: { children: ReactN
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalStartDate, setModalStartDate] = useState<Date | null>(null);
     const [modalEndDate, setModalEndDate] = useState<Date | null>(null);
+    const [isWideMode, setIsWideMode] = useState(false);
+
+    // Load wide mode preference from localStorage on mount
+    useEffect(() => {
+        const saved = localStorage.getItem('calendar-wide-mode');
+        if (saved === 'true') setIsWideMode(true);
+    }, []);
+
+    const toggleWideMode = () => {
+        setIsWideMode(prev => {
+            const next = !prev;
+            localStorage.setItem('calendar-wide-mode', String(next));
+            return next;
+        });
+    };
     const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
 
     // Sync if initialEvents changes (e.g. revalidation)
@@ -108,7 +127,9 @@ export function CalendarProvider({ children, initialEvents }: { children: ReactN
             setModalDateRange,
             selectedEvent,
             events,
-            refreshEvents
+            refreshEvents,
+            isWideMode,
+            toggleWideMode
         }}>
             {children}
         </CalendarContext.Provider>

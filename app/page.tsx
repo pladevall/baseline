@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 // FileUpload import removed as it is now used inside IntegrationTabs
 import DataTable from '@/components/DataTable';
 import IntegrationTabs from '@/components/IntegrationTabs';
@@ -15,8 +17,13 @@ import { getEntriesFromDb, saveEntryToDb, deleteEntryFromDb, migrateFromLocalSto
 import { correlateMeasurements } from '@/lib/correlation-utils';
 import { generateVolumeEfficiencyInsights, generateBalanceInsights, generatePeriodizationInsights } from '@/lib/correlation-insights';
 import { analyzeBodyPartBalance } from '@/lib/correlation-utils';
+import { useBaselineData } from '@/lib/use-baseline-data';
 
 export default function Home() {
+  // SWR cached data for instant navigation
+  const { data: cachedData, isLoading: isCacheLoading, refresh: refreshCache } = useBaselineData();
+
+  // Local state that can be mutated (initialized from cache)
   const [entries, setEntries] = useState<BIAEntry[]>([]);
   const [bodyspecScans, setBodyspecScans] = useState<BodyspecScan[]>([]);
   const [bodyspecConnections, setBodyspecConnections] = useState<any[]>([]);
@@ -31,6 +38,21 @@ export default function Home() {
   // Correlation tracking state
   const [correlations, setCorrelations] = useState<CorrelationResult[]>([]);
   const [insights, setInsights] = useState<Insight[]>([]);
+
+  // Sync local state from SWR cache when it updates
+  useEffect(() => {
+    if (cachedData.entries.length > 0 || cachedData.bodyspecScans.length > 0) {
+      setEntries(cachedData.entries);
+      setBodyspecScans(cachedData.bodyspecScans);
+      setBodyspecConnections(cachedData.bodyspecConnections);
+      setGoals(cachedData.goals);
+      setStravaConnections(cachedData.stravaConnections);
+      setHevyConnections(cachedData.hevyConnections);
+      setRunningActivities(cachedData.runningActivities);
+      setLiftingWorkouts(cachedData.liftingWorkouts);
+      setSleepEntries(cachedData.sleepEntries);
+    }
+  }, [cachedData]);
 
   const [hiddenScans, setHiddenScans] = useState<Set<string>>(() => {
     // Load from localStorage on init
@@ -97,6 +119,20 @@ export default function Home() {
   }, [bodyspecScans, hiddenScans]);
 
   const visibleScans = bodyspecScans.filter(scan => !hiddenScans.has(scan.id));
+
+  const router = useRouter();
+
+  // Keyboard shortcut: Cmd+Shift+C to go to Calendar
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'C') {
+        e.preventDefault();
+        router.push('/calendar');
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [router]);
 
   // When scans load, if no localStorage exists OR if it's empty, auto-hide all but the most recent scan
   useEffect(() => {
@@ -476,7 +512,10 @@ export default function Home() {
     }
   }, [loadBodyspecData]);
 
-  if (isInitializing) {
+  // Only show loading spinner if we don't have cached data
+  const hasCachedData = cachedData.entries.length > 0 || cachedData.bodyspecScans.length > 0 || cachedData.sleepEntries.length > 0;
+
+  if (isInitializing && !hasCachedData) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
@@ -500,7 +539,21 @@ export default function Home() {
               Unified fitness metrics
             </p>
           </div>
-          <ThemeToggle />
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <Link
+              href="/calendar"
+              title="Calendar (Cmd+Shift+C)"
+              className="p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect width="18" height="18" x="3" y="4" rx="2" ry="2" />
+                <line x1="16" x2="16" y1="2" y2="6" />
+                <line x1="8" x2="8" y1="2" y2="6" />
+                <line x1="3" x2="21" y1="10" y2="10" />
+              </svg>
+            </Link>
+          </div>
         </header>
 
 

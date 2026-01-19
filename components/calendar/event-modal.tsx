@@ -89,8 +89,8 @@ export function EventModal() {
                 return;
             }
 
-            // Alt/Cmd + number to select category
-            if ((e.altKey || e.metaKey) && e.key >= '1' && e.key <= '4') {
+            // Alt/Cmd + number to select category (1-6)
+            if ((e.altKey || e.metaKey) && e.key >= '1' && e.key <= '6') {
                 e.preventDefault();
                 const categories = Object.keys(CALENDAR_CATEGORIES) as CalendarCategoryKey[];
                 const index = parseInt(e.key) - 1;
@@ -256,12 +256,6 @@ export function EventModal() {
                         </button>
                     )}
                 </div>
-
-                {deleteConfirm && isEditMode && (
-                    <p className="text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/10 px-3 py-2 rounded-md">
-                        Click Delete again to confirm removal
-                    </p>
-                )}
             </div>
         </div>
     );
