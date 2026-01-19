@@ -19,6 +19,7 @@ interface StravaConnectProps {
 export default function StravaConnect({ connections, onConnectionChange }: StravaConnectProps) {
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
+    const [isSyncing, setIsSyncing] = useState(false);
 
     // Check for OAuth callback messages in URL
     useEffect(() => {
@@ -63,6 +64,33 @@ export default function StravaConnect({ connections, onConnectionChange }: Strav
         }
     };
 
+    const handleSync = async (connectionId: string) => {
+        setIsSyncing(true);
+        setError(null);
+        setSuccess('Sync started...');
+
+        try {
+            const response = await fetch('/api/strava/sync', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ connectionId }),
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Sync failed');
+            }
+
+            setSuccess(data.message || 'Sync complete');
+            onConnectionChange?.();
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Sync failed');
+        } finally {
+            setIsSyncing(false);
+        }
+    };
+
     // If connected, show connection info
     if (connections.length > 0) {
         const connection = connections[0];
@@ -91,20 +119,29 @@ export default function StravaConnect({ connections, onConnectionChange }: Strav
                         <span className="text-orange-500">🏃</span>
                         <span className="text-sm font-medium">{connection.athleteName || 'Strava Athlete'}</span>
                         <span className={`text-xs px-1.5 py-0.5 rounded ${connection.syncStatus === 'connected'
-                                ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300'
-                                : connection.syncStatus === 'error'
-                                    ? 'bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300'
-                                    : 'bg-yellow-100 dark:bg-yellow-900 text-yellow-700 dark:text-yellow-300'
+                            ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300'
+                            : connection.syncStatus === 'error'
+                                ? 'bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300'
+                                : 'bg-yellow-100 dark:bg-yellow-900 text-yellow-700 dark:text-yellow-300'
                             }`}>
                             {connection.syncStatus}
                         </span>
                     </div>
-                    <button
-                        onClick={() => handleDisconnect(connection.id)}
-                        className="text-xs text-gray-500 hover:text-red-600 dark:hover:text-red-400"
-                    >
-                        Disconnect
-                    </button>
+                    <div className="flex gap-2">
+                        <button
+                            onClick={() => handleSync(connection.id)}
+                            disabled={isSyncing}
+                            className={`text-xs ${isSyncing ? 'text-gray-400' : 'text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300'}`}
+                        >
+                            {isSyncing ? 'Syncing...' : 'Sync Now'}
+                        </button>
+                        <button
+                            onClick={() => handleDisconnect(connection.id)}
+                            className="text-xs text-gray-500 hover:text-red-600 dark:hover:text-red-400"
+                        >
+                            Disconnect
+                        </button>
+                    </div>
                 </div>
             </div>
         );

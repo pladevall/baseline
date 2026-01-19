@@ -558,8 +558,8 @@ export default function DataTable({ entries, goals, bodyspecScans = [], correlat
           )
         )}
       >
-        {/* Header & Core */}
-        {(['header', 'core'] as const).map((category) => {
+        {/* Core Metrics */}
+        {(['core'] as const).map((category) => {
           const metricsInCategory = METRIC_DEFINITIONS.filter(
             (m) => m.category === category
           );
@@ -1404,11 +1404,11 @@ function MuscleGrowthAnalysisSection({
                 const bgColor = primaryInsight.severity === 'warning'
                   ? 'bg-amber-50/60 dark:bg-amber-900/15'
                   : primaryInsight.severity === 'tip'
-                  ? 'bg-blue-50/60 dark:bg-blue-900/15'
-                  : 'bg-emerald-50/60 dark:bg-emerald-900/15';
+                    ? 'bg-blue-50/60 dark:bg-blue-900/15'
+                    : 'bg-emerald-50/60 dark:bg-emerald-900/15';
 
                 const icon = primaryInsight.severity === 'warning' ? '⚠️' :
-                             primaryInsight.severity === 'tip' ? '💡' : '✓';
+                  primaryInsight.severity === 'tip' ? '💡' : '✓';
 
                 return (
                   <td className={`px-2 py-1.5 text-center text-xs ${bgColor}`}>
@@ -1466,9 +1466,9 @@ function MuscleGrowthAnalysisSection({
             renderCell={() => {
               const eff = latest.totalVolume / latest.totalMuscleGain;
               const score = eff < 25000 ? 'Excellent' :
-                            eff < 40000 ? 'Good' : 'Needs Work';
+                eff < 40000 ? 'Good' : 'Needs Work';
               const color = eff < 25000 ? 'text-emerald-600' :
-                            eff < 40000 ? 'text-blue-600' : 'text-amber-600';
+                eff < 40000 ? 'text-blue-600' : 'text-amber-600';
 
               return (
                 <td className="px-2 py-1.5 text-center text-xs">

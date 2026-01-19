@@ -77,10 +77,6 @@ export default function ManualEntryForm({ onSave, onCancel }: ManualEntryFormPro
       bodyShape: '',
       bmiCategory: '',
       pbfCategory: '',
-      normalWeight: 0,
-      weightControl: 0,
-      fatMassControl: 0,
-      muscleControl: 0,
     };
 
     onSave(entry);

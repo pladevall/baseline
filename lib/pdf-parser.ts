@@ -53,7 +53,7 @@ export function autoCorrectEntry(entry: BIAEntry, previous: BIAEntry | null): BI
     'bodyWater', 'protein', 'boneMass', 'bodyFatMass', 'softLeanMass', 'fatFreeMass', 'lbm', 'bmr',
     'metabolicAge', 'subcutaneousFatPercentage', 'muscleMassPercentage', 'skeletalMusclePercentage',
     'boneMassPercentage', 'proteinPercentage', 'bodyWaterPercentage', 'smi', 'waistHipRatio',
-    'fitnessScore', 'normalWeight', 'weightControl', 'fatMassControl', 'muscleControl'
+    'fitnessScore'
   ];
 
   for (const metric of numericMetrics) {
@@ -145,7 +145,7 @@ export function validateAgainstPrevious(parsed: BIAEntry, previous: BIAEntry | n
     'bodyWater', 'protein', 'boneMass', 'bodyFatMass', 'softLeanMass', 'fatFreeMass', 'lbm', 'bmr',
     'metabolicAge', 'subcutaneousFatPercentage', 'muscleMassPercentage', 'skeletalMusclePercentage',
     'boneMassPercentage', 'proteinPercentage', 'bodyWaterPercentage', 'smi', 'waistHipRatio',
-    'fitnessScore', 'normalWeight', 'weightControl', 'fatMassControl', 'muscleControl'
+    'fitnessScore'
   ];
 
   for (const metric of numericMetrics) {
@@ -550,24 +550,6 @@ export function parseBIAReport(text: string): BIAEntry {
   const bmiCategory = bmi < 18.5 ? 'Under' : bmi < 25 ? 'Normal' : bmi < 30 ? 'Over' : 'Over excessively';
   const pbfCategory = bodyFatPercentage < 10 ? 'Normal' : bodyFatPercentage < 20 ? 'Normal' : bodyFatPercentage < 25 ? 'Mild obesity' : 'Obesity';
 
-  // Weight Control recommendations - "Normal weight 170.61b"
-  const normalWeightMatch = text.match(/Normal\s*weight\s*(\d+\.?\d*)(?:l|I)?b/i);
-  const normalWeight = normalWeightMatch ? parseFloat(normalWeightMatch[1]) : 0;
-  console.log('Normal Weight:', normalWeight);
-
-  // "Weight Control -1.41b"
-  const weightControlMatch = text.match(/Weight\s*Control\s*(-?\d+\.?\d*)(?:l|I)?b/i);
-  const weightControl = weightControlMatch ? parseFloat(weightControlMatch[1]) : 0;
-
-  // "Fat mass control -1.4lb"
-  const fatMassControlMatch = text.match(/Fat\s*mass\s*control\s*(-?\d+\.?\d*)(?:l|I)?b/i);
-  const fatMassControl = fatMassControlMatch ? parseFloat(fatMassControlMatch[1]) : 0;
-
-  // "Muscle control +0lb" - handle various formats including "+0lb", "+ 0lb", "0lb"
-  const muscleControlMatch = text.match(/Muscle\s*control\s*([+-]?\s*\d+\.?\d*)\s*(?:l|I)?b/i);
-  const muscleControl = muscleControlMatch ? parseFloat(muscleControlMatch[1].replace(/\s/g, '')) : 0;
-  console.log('Muscle Control:', muscleControl);
-
   const result: BIAEntry = {
     id: uuidv4(),
     date,
@@ -611,10 +593,6 @@ export function parseBIAReport(text: string): BIAEntry {
     bodyShape,
     bmiCategory,
     pbfCategory,
-    normalWeight,
-    weightControl,
-    fatMassControl,
-    muscleControl,
   };
 
   console.log('=== PARSED RESULT ===');

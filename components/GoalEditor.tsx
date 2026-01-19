@@ -1,10 +1,20 @@
 import { useState, useRef, useEffect } from 'react';
 
-// Helper to format seconds to time string
-const formatTimeInput = (seconds: number, type: 'duration' | 'pace'): string => {
-  if (!seconds && seconds !== 0) return '';
-  const m = Math.floor(seconds / 60);
-  const s = Math.round(seconds % 60);
+// Helper to format seconds/minutes to time string
+const formatTimeInput = (value: number, type: 'duration' | 'pace' | 'time'): string => {
+  if (value === null || value === undefined) return '';
+
+  if (type === 'time') {
+    // Value is minutes from midnight (potentially > 1440 for next day)
+    const normalizedMinutes = value % 1440;
+    const h = Math.floor(normalizedMinutes / 60);
+    const m = Math.round(normalizedMinutes % 60);
+    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+  }
+
+  // Duration/Pace (value is seconds)
+  const m = Math.floor(value / 60);
+  const s = Math.round(value % 60);
 
   if (type === 'duration' && m >= 60) {
     const h = Math.floor(m / 60);
@@ -15,9 +25,19 @@ const formatTimeInput = (seconds: number, type: 'duration' | 'pace'): string => 
   return `${m}:${s.toString().padStart(2, '0')}`;
 };
 
-// Helper to parse time string to seconds
-const parseTimeInput = (value: string): number | null => {
+// Helper to parse time string to number
+// Returns seconds for duration/pace, minutes for time
+const parseTimeInput = (value: string, type: 'duration' | 'pace' | 'time'): number | null => {
   if (!value) return null;
+
+  if (type === 'time') {
+    // Expect HH:MM from type="time" input
+    const [h, m] = value.split(':').map(Number);
+    if (isNaN(h) || isNaN(m)) return null;
+    return h * 60 + m;
+  }
+
+  // Duration/Pace parsing
   // allow mm:ss or hh:mm:ss or m:ss
   const parts = value.split(':').map(Number);
   if (parts.some(isNaN)) return null;
@@ -29,15 +49,6 @@ const parseTimeInput = (value: string): number | null => {
     return parts[0] * 60 + parts[1];
   }
   if (parts.length === 1) {
-    return parts[0]; // Treat as seconds if just number? Or minutes? 
-    // Usually manual entry of "30" for runtime might mean 30 mins, but for consistency let's assume if no colons, user might need to type 30:00.
-    // Actually, for better UX clarity, if it's duration/pace, let's enforce colons or just assume minutes?
-    // Let's stick strictly to colons for now to avoid ambiguity, or just accept raw seconds if they type pure numbers (unlikely behavior but safe).
-    // Actually standard is usually: pure number -> error or specific unit. 
-    // Let's implement robust parsing:
-    // If user types "5", is it 5 min or 5 sec?
-    // Let's assume input needs at least one colon for time format, otherwise it's just raw number which might be weird.
-    // But let's just accept it as partial entry and maybe it handles valid float parsing.
     return parts[0];
   }
   return null;
@@ -47,7 +58,7 @@ interface GoalEditorProps {
   metricKey: string;
   metricLabel: string;
   currentValue: number | null;
-  inputType?: 'number' | 'duration' | 'pace';
+  inputType?: 'number' | 'duration' | 'pace' | 'time';
   onSave: (metricKey: string, value: number) => void;
   onDelete: (metricKey: string) => void;
   onClose: () => void;
@@ -72,8 +83,10 @@ export default function GoalEditor({
 
   useEffect(() => {
     inputRef.current?.focus();
-    inputRef.current?.select();
-  }, []);
+    if (inputType !== 'time') {
+      inputRef.current?.select();
+    }
+  }, [inputType]);
 
   const handleSave = () => {
     let numValue: number | null = null;
@@ -82,10 +95,13 @@ export default function GoalEditor({
       const parsed = parseFloat(value);
       if (!isNaN(parsed)) numValue = parsed;
     } else {
-      numValue = parseTimeInput(value);
+      numValue = parseTimeInput(value, inputType);
     }
 
-    if (numValue !== null && numValue > 0) {
+    // Allow 0 for time (midnight), but enforce positive for others?
+    // Actually 0 goal might be valid for some things (e.g. 0 interruptions), but usually strict > 0 check was there.
+    // For time, 0 is midnight.
+    if (numValue !== null && (inputType === 'time' || numValue >= 0)) {
       onSave(metricKey, numValue);
       onClose();
     }
@@ -104,7 +120,8 @@ export default function GoalEditor({
     }
   };
 
-  const placeholder = inputType === 'pace' ? 'm:ss' : inputType === 'duration' ? 'h:mm:ss' : 'Target value';
+  const placeholder = inputType === 'pace' ? 'm:ss' : inputType === 'duration' ? 'h:mm:ss' : inputType === 'time' ? '--:--' : 'Target value';
+  const renderInputType = inputType === 'time' ? 'time' : inputType === 'number' ? 'number' : 'text';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
@@ -117,7 +134,7 @@ export default function GoalEditor({
         </h3>
         <input
           ref={inputRef}
-          type={inputType === 'number' ? "number" : "text"}
+          type={renderInputType}
           step={inputType === 'number' ? "0.1" : undefined}
           value={value}
           onChange={(e) => setValue(e.target.value)}
@@ -125,7 +142,7 @@ export default function GoalEditor({
           placeholder={placeholder}
           className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
-        {inputType !== 'number' && (
+        {inputType !== 'number' && inputType !== 'time' && (
           <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
             Format: {placeholder}
           </p>
@@ -138,7 +155,7 @@ export default function GoalEditor({
           >
             Save
           </button>
-          {currentValue && (
+          {currentValue !== null && (
             <button
               onClick={handleDelete}
               className="px-3 py-1.5 text-xs font-medium text-red-600 dark:text-red-400 border border-red-300 dark:border-red-700 rounded hover:bg-red-50 dark:hover:bg-red-900/30"

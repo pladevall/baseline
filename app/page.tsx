@@ -7,11 +7,14 @@ import IntegrationTabs from '@/components/IntegrationTabs';
 import WorkoutTable from '@/components/WorkoutTable';
 import { SleepTable } from '@/components/SleepTable';
 import ValidationWarning from '@/components/ValidationWarning';
-import { BIAEntry, BodyspecScan, RunningActivity, LiftingWorkout, SleepEntry } from '@/lib/types';
+import { BIAEntry, BodyspecScan, RunningActivity, LiftingWorkout, SleepEntry, CorrelationResult, Insight } from '@/lib/types';
 import { parsePDFFile } from '@/lib/client-pdf-parser';
 import { ValidationIssue } from '@/lib/pdf-parser';
 import ThemeToggle from '@/components/ThemeToggle';
 import { getEntriesFromDb, saveEntryToDb, deleteEntryFromDb, migrateFromLocalStorage, getPendingImages, deletePendingImage, saveOcrDebug, getGoals, saveGoal, deleteGoal, Goal } from '@/lib/supabase';
+import { correlateMeasurements } from '@/lib/correlation-utils';
+import { generateVolumeEfficiencyInsights, generateBalanceInsights, generatePeriodizationInsights } from '@/lib/correlation-insights';
+import { analyzeBodyPartBalance } from '@/lib/correlation-utils';
 
 export default function Home() {
   const [entries, setEntries] = useState<BIAEntry[]>([]);
@@ -25,6 +28,9 @@ export default function Home() {
   const [liftingWorkouts, setLiftingWorkouts] = useState<LiftingWorkout[]>([]);
   // Sleep tracking state
   const [sleepEntries, setSleepEntries] = useState<SleepEntry[]>([]);
+  // Correlation tracking state
+  const [correlations, setCorrelations] = useState<CorrelationResult[]>([]);
+  const [insights, setInsights] = useState<Insight[]>([]);
 
   const [hiddenScans, setHiddenScans] = useState<Set<string>>(() => {
     // Load from localStorage on init
@@ -277,6 +283,34 @@ export default function Home() {
     init();
   }, [loadBodyspecData, loadWorkoutData, loadSleepData]);
 
+  // Compute correlations when entries, bodyspec scans, or workouts change
+  useEffect(() => {
+    if ((entries.length > 0 || bodyspecScans.length > 0) && liftingWorkouts.length > 0) {
+      const allMeasurements = [...entries, ...bodyspecScans];
+      const results = correlateMeasurements(allMeasurements, liftingWorkouts, 4);
+      setCorrelations(results);
+    } else {
+      setCorrelations([]);
+    }
+  }, [entries, bodyspecScans, liftingWorkouts]);
+
+  // Generate insights when correlations change
+  useEffect(() => {
+    if (correlations.length === 0) {
+      setInsights([]);
+      return;
+    }
+
+    const latest = correlations[0]; // Most recent period
+    const generatedInsights: Insight[] = [
+      ...generateVolumeEfficiencyInsights(latest),
+      ...generateBalanceInsights(analyzeBodyPartBalance(latest)),
+      ...generatePeriodizationInsights(correlations),
+    ];
+
+    setInsights(generatedInsights);
+  }, [correlations]);
+
   const processNextFile = useCallback(
     async (filesToProcess: File[], startIndex: number, skipped: Set<number>, failed: number) => {
       if (startIndex >= filesToProcess.length) {
@@ -498,7 +532,12 @@ export default function Home() {
               </h2>
             </div>
             <div>
-              <SleepTable entries={sleepEntries} />
+              <SleepTable
+                entries={sleepEntries}
+                goals={goals}
+                onSaveGoal={handleSaveGoal}
+                onDeleteGoal={handleDeleteGoal}
+              />
             </div>
           </section>
         )}
@@ -513,6 +552,8 @@ export default function Home() {
             entries={entries}
             goals={goals}
             bodyspecScans={visibleScans}
+            correlations={correlations}
+            insights={insights}
             onDelete={handleDelete}
             onSaveGoal={handleSaveGoal}
             onDeleteGoal={handleDeleteGoal}
