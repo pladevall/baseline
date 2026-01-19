@@ -7,6 +7,7 @@ import { CalendarProvider, useCalendar } from './calendar-context';
 import { YearGrid } from './year-grid';
 import { EventModal } from './event-modal';
 import { BatchInputMode } from './batch-input-mode';
+import { InboxPopover } from './inbox-popover';
 import ThemeToggle from '@/components/ThemeToggle';
 import { CalendarEvent } from '@/types/calendar';
 import { Plus, Home, Maximize2, Minimize2 } from 'lucide-react';
@@ -62,6 +63,7 @@ function CalendarPageContent({ batchModeOpen, setBatchModeOpen }: CalendarPageCo
                     >
                         <Plus size={18} />
                     </button>
+                    <InboxPopover />
                     <button
                         onClick={toggleWideMode}
                         title={isWideMode ? "Normal view (Option+W)" : "Wide view (Option+W)"}

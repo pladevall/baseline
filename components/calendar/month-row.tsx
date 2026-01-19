@@ -177,7 +177,7 @@ export function MonthRow({ month, monthIndex, events, totalColumns }: MonthRowPr
                             key={`offset-${i}`}
                             className={cn(
                                 "border-r border-gray-100 dark:border-zinc-800/50 min-h-[48px]",
-                                (i % 7 === 0 || i % 7 === 6) && "bg-gray-50/50 dark:bg-zinc-900/30"
+                                (i % 7 === 0 || i % 7 === 6) && "bg-gray-100/50 dark:bg-zinc-900/30"
                             )}
                         />
                     ))}
@@ -198,7 +198,7 @@ export function MonthRow({ month, monthIndex, events, totalColumns }: MonthRowPr
                                 key={`trail-${i}`}
                                 className={cn(
                                     "border-r border-gray-100 dark:border-zinc-800/50 min-h-[48px]",
-                                    (colIndex % 7 === 0 || colIndex % 7 === 6) && "bg-gray-50/50 dark:bg-zinc-900/30"
+                                    (colIndex % 7 === 0 || colIndex % 7 === 6) && "bg-gray-100/50 dark:bg-zinc-900/30"
                                 )}
                             />
                         );

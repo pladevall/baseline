@@ -105,7 +105,7 @@ function YearGridInner() {
                                 return (
                                     <div
                                         key={i}
-                                        className={`flex items-center justify-center border-r border-gray-100 dark:border-zinc-800/50 py-1.5 text-[10px] font-semibold uppercase tracking-wider ${isWeekend ? 'text-gray-300 dark:text-zinc-600 bg-gray-50/50 dark:bg-zinc-900/30' : 'text-gray-400'}`}
+                                        className={`flex items-center justify-center border-r border-gray-100 dark:border-zinc-800/50 py-1.5 text-[10px] font-semibold uppercase tracking-wider ${isWeekend ? 'text-gray-500 dark:text-zinc-600 bg-gray-100/50 dark:bg-zinc-900/30' : 'text-gray-400'}`}
                                     >
                                         {DAYS_OF_WEEK[weekdayIndex]}
                                     </div>
