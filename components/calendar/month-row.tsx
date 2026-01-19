@@ -1,26 +1,18 @@
 'use client';
 
-import { useMemo, useState, useRef, useCallback } from 'react';
-import { eachDayOfInterval, endOfMonth, startOfMonth, format, differenceInDays, getDay } from 'date-fns';
-import {
-    DndContext,
-    DragEndEvent,
-    DragMoveEvent,
-    DragStartEvent,
-    PointerSensor,
-    useSensor,
-    useSensors,
-    DragOverlay,
-} from '@dnd-kit/core';
+import { useMemo, useEffect, useRef } from 'react';
+import { eachDayOfInterval, endOfMonth, startOfMonth, format, differenceInDays, getDay, getDaysInMonth, addDays } from 'date-fns';
+import { useDraggable } from '@dnd-kit/core';
 import { DayCell } from './day-cell';
 import { cn } from '@/lib/utils';
 import { CalendarEvent } from '@/types/calendar';
 import { CALENDAR_CATEGORIES } from '@/lib/calendar-config';
 import { useCalendar } from './calendar-context';
-import { createClient } from '@/lib/supabase/client';
+import { useEventDrag } from './event-drag-context';
 
 interface MonthRowProps {
     month: Date;
+    monthIndex: number;
     events: CalendarEvent[];
     totalColumns: number;
 }
@@ -32,142 +24,20 @@ interface PositionedEventStrip extends CalendarEvent {
     columnSpan: number;
 }
 
-// Draggable event strip component
-function DraggableEventStrip({
-    event,
-    dayWidth,
-    previewOffset,
-    isResizing,
-    isDragging,
-    onResizeStart,
-    onClick,
-}: {
-    event: PositionedEventStrip;
-    dayWidth: number;
-    previewOffset: number;
-    isResizing: 'start' | 'end' | null;
-    isDragging: boolean;
-    onResizeStart: (handle: 'start' | 'end') => void;
-    onClick: () => void;
-}) {
-    const cat = CALENDAR_CATEGORIES[event.category];
-
-    let displayStartIndex = event.startIndex;
-    let displayEndIndex = event.endIndex;
-
-    if (isResizing === 'start') {
-        displayStartIndex = Math.min(event.startIndex + previewOffset, event.endIndex);
-    } else if (isResizing === 'end') {
-        displayEndIndex = Math.max(event.endIndex + previewOffset, event.startIndex);
-    } else if (isDragging) {
-        displayStartIndex = event.startIndex + previewOffset;
-        displayEndIndex = event.endIndex + previewOffset;
-    }
-
-    const leftPercent = displayStartIndex * dayWidth;
-    const columnSpan = displayEndIndex - displayStartIndex + 1;
-    const widthPercent = columnSpan * dayWidth;
-
-    return (
-        <div
-            data-event-id={event.id}
-            className={cn(
-                "absolute h-4 flex items-center px-1.5 text-[10px] font-medium group/event",
-                isDragging ? "cursor-grabbing" : "cursor-grab",
-                "rounded shadow-sm hover:shadow-md hover:z-30",
-                (isResizing || isDragging) && "opacity-75",
-                "transition-[box-shadow]",
-                cat.color,
-                cat.textColor,
-            )}
-            style={{
-                left: `${leftPercent}%`,
-                width: `${widthPercent}%`,
-                top: `${32 + event.lane * 20}px`,
-                userSelect: 'none',
-            }}
-            title={`${event.title} (${format(new Date(event.start_date), 'MMM d')} - ${format(new Date(event.end_date), 'MMM d')})`}
-            onClick={(e) => {
-                e.stopPropagation();
-                if (!isDragging && !isResizing) onClick();
-            }}
-        >
-            {/* Start Resize Handle */}
-            <div
-                data-resize-handle="start"
-                onPointerDown={(e) => {
-                    e.stopPropagation();
-                    onResizeStart('start');
-                }}
-                className={cn(
-                    "absolute left-0 top-0 bottom-0 w-2 bg-blue-400 hover:bg-blue-600 cursor-col-resize transition-opacity",
-                    (isResizing || isDragging) ? "opacity-100" : "opacity-0 group-hover/event:opacity-100"
-                )}
-            />
-
-            <span className="truncate flex-1 mx-1">{event.title}</span>
-
-            {/* End Resize Handle */}
-            <div
-                data-resize-handle="end"
-                onPointerDown={(e) => {
-                    e.stopPropagation();
-                    onResizeStart('end');
-                }}
-                className={cn(
-                    "absolute right-0 top-0 bottom-0 w-2 bg-blue-400 hover:bg-blue-600 cursor-col-resize transition-opacity",
-                    (isResizing || isDragging) ? "opacity-100" : "opacity-0 group-hover/event:opacity-100"
-                )}
-            />
-        </div>
-    );
-}
-
-// Overlay component for drag preview
-function EventDragOverlay({ event }: { event: PositionedEventStrip | null }) {
-    if (!event) return null;
-
-    const cat = CALENDAR_CATEGORIES[event.category];
-
-    return (
-        <div
-            className={cn(
-                "h-4 flex items-center px-1.5 text-[10px] font-medium pointer-events-none",
-                "rounded shadow-lg opacity-90",
-                cat.color,
-                cat.textColor,
-            )}
-            style={{
-                width: `${(event.endIndex - event.startIndex + 1) * 28}px`,
-                userSelect: 'none',
-            }}
-        >
-            <span className="truncate">{event.title}</span>
-        </div>
-    );
-}
-
-export function MonthRow({ month, events, totalColumns }: MonthRowProps) {
+export function MonthRow({ month, monthIndex, events, totalColumns }: MonthRowProps) {
     const containerRef = useRef<HTMLDivElement>(null);
-    const { openModal, refreshEvents } = useCalendar();
-
-    // DND Kit state
-    const [activeId, setActiveId] = useState<string | null>(null);
-    const [activeType, setActiveType] = useState<'drag' | 'resize-start' | 'resize-end' | null>(null);
-    const [previewColumnDelta, setPreviewColumnDelta] = useState(0);
-    const justDraggedRef = useRef(false);
-
-    // Configure pointer sensor with activation constraint (distance threshold)
-    const sensors = useSensors(
-        useSensor(PointerSensor, {
-            activationConstraint: {
-                distance: 5,
-            },
-        })
-    );
+    const { openModal } = useCalendar();
+    const {
+        activeEventId,
+        activeType,
+        previewDelta,
+        registerMonth,
+        justDragged
+    } = useEventDrag();
 
     // Calculate offset (0=Sun, 1=Mon, ... 6=Sat)
     const offset = useMemo(() => getDay(startOfMonth(month)), [month]);
+    const daysInMonth = getDaysInMonth(month);
 
     const days = useMemo(() => {
         return eachDayOfInterval({
@@ -175,6 +45,29 @@ export function MonthRow({ month, events, totalColumns }: MonthRowProps) {
             end: endOfMonth(month),
         });
     }, [month]);
+
+    // Register this month's info for coordinate calculation
+    useEffect(() => {
+        const updateRect = () => {
+            if (containerRef.current) {
+                registerMonth(monthIndex, {
+                    month,
+                    offset,
+                    daysInMonth,
+                    containerRect: containerRef.current.getBoundingClientRect(),
+                });
+            }
+        };
+
+        updateRect();
+        window.addEventListener('resize', updateRect);
+        window.addEventListener('scroll', updateRect);
+
+        return () => {
+            window.removeEventListener('resize', updateRect);
+            window.removeEventListener('scroll', updateRect);
+        };
+    }, [monthIndex, month, offset, daysInMonth, registerMonth]);
 
     // Calculate positioned events as horizontal strips
     const positionedEvents = useMemo(() => {
@@ -189,12 +82,30 @@ export function MonthRow({ month, events, totalColumns }: MonthRowProps) {
         });
 
         sortedEvents.forEach((event) => {
+            // For dragging events, apply preview delta
+            let eventStartDate = event.start_date;
+            let eventEndDate = event.end_date;
+
+            if (event.id === activeEventId && previewDelta) {
+                const origStart = new Date(event.start_date);
+                const origEnd = new Date(event.end_date);
+
+                if (activeType === 'drag') {
+                    eventStartDate = format(addDays(origStart, previewDelta.days), 'yyyy-MM-dd');
+                    eventEndDate = format(addDays(origEnd, previewDelta.days), 'yyyy-MM-dd');
+                } else if (activeType === 'resize-start') {
+                    eventStartDate = format(addDays(origStart, previewDelta.days), 'yyyy-MM-dd');
+                } else if (activeType === 'resize-end') {
+                    eventEndDate = format(addDays(origEnd, previewDelta.days), 'yyyy-MM-dd');
+                }
+            }
+
             let startIndex = -1;
             let endIndex = -1;
 
             days.forEach((day, index) => {
                 const dStr = format(day, 'yyyy-MM-dd');
-                if (dStr >= event.start_date && dStr <= event.end_date) {
+                if (dStr >= eventStartDate && dStr <= eventEndDate) {
                     if (startIndex === -1) startIndex = index;
                     endIndex = index;
                 }
@@ -240,133 +151,14 @@ export function MonthRow({ month, events, totalColumns }: MonthRowProps) {
         });
 
         return strips;
-    }, [days, events, offset]);
-
-    const eventsById = useMemo(() => {
-        const map = new Map<string, PositionedEventStrip>();
-        positionedEvents.forEach(e => map.set(e.id, e));
-        return map;
-    }, [positionedEvents]);
-
-    const getColumnFromX = useCallback((clientX: number): number => {
-        if (!containerRef.current) return 0;
-        const rect = containerRef.current.getBoundingClientRect();
-        const x = clientX - rect.left;
-        return Math.floor((x / rect.width) * totalColumns);
-    }, [totalColumns]);
-
-    const updateEventDate = async (eventId: string, startDate: string, endDate: string) => {
-        const supabase = createClient();
-        const { error } = await supabase
-            .from('calendar_events')
-            .update({ start_date: startDate, end_date: endDate })
-            .eq('id', eventId);
-
-        if (!error) {
-            await refreshEvents();
-        }
-    };
-
-    // DND Kit handlers
-    const handleDragStart = (event: DragStartEvent) => {
-        const id = String(event.active.id);
-
-        // Check if it's a resize handle or the event itself
-        if (id.endsWith('-resize-start')) {
-            setActiveId(id.replace('-resize-start', ''));
-            setActiveType('resize-start');
-        } else if (id.endsWith('-resize-end')) {
-            setActiveId(id.replace('-resize-end', ''));
-            setActiveType('resize-end');
-        } else {
-            setActiveId(id);
-            setActiveType('drag');
-        }
-        setPreviewColumnDelta(0);
-    };
-
-    const handleDragMove = (event: DragMoveEvent) => {
-        if (!containerRef.current || !activeId) return;
-
-        const rect = containerRef.current.getBoundingClientRect();
-        const columnWidth = rect.width / totalColumns;
-        const deltaColumns = Math.round(event.delta.x / columnWidth);
-
-        setPreviewColumnDelta(deltaColumns);
-    };
-
-    const handleDragEnd = async (event: DragEndEvent) => {
-        if (!activeId || !activeType) {
-            resetDragState();
-            return;
-        }
-
-        const positionedEvent = eventsById.get(activeId);
-        if (!positionedEvent) {
-            resetDragState();
-            return;
-        }
-
-        const deltaColumns = previewColumnDelta;
-
-        // Mark that a drag just completed to prevent onClick from firing
-        justDraggedRef.current = true;
-        setTimeout(() => { justDraggedRef.current = false; }, 0);
-
-        if (deltaColumns === 0) {
-            // No movement - the onClick handler will open the modal
-            resetDragState();
-            return;
-        }
-
-        if (activeType === 'drag') {
-            // Move the entire event
-            const newStartDayIndex = positionedEvent.startIndex + deltaColumns - offset;
-            const newEndDayIndex = positionedEvent.endIndex + deltaColumns - offset;
-
-            if (newStartDayIndex >= 0 && newEndDayIndex < days.length) {
-                const newStartDate = format(days[newStartDayIndex], 'yyyy-MM-dd');
-                const newEndDate = format(days[newEndDayIndex], 'yyyy-MM-dd');
-                await updateEventDate(positionedEvent.id, newStartDate, newEndDate);
-            }
-        } else if (activeType === 'resize-start') {
-            // Resize from start
-            const newStartDayIndex = positionedEvent.startIndex + deltaColumns - offset;
-            if (newStartDayIndex >= 0 && newStartDayIndex <= positionedEvent.endIndex - offset) {
-                const newStartDate = format(days[newStartDayIndex], 'yyyy-MM-dd');
-                await updateEventDate(positionedEvent.id, newStartDate, positionedEvent.end_date);
-            }
-        } else if (activeType === 'resize-end') {
-            // Resize from end
-            const newEndDayIndex = positionedEvent.endIndex + deltaColumns - offset;
-            if (newEndDayIndex < days.length && newEndDayIndex >= positionedEvent.startIndex - offset) {
-                const newEndDate = format(days[newEndDayIndex], 'yyyy-MM-dd');
-                await updateEventDate(positionedEvent.id, positionedEvent.start_date, newEndDate);
-            }
-        }
-
-        resetDragState();
-    };
-
-    const resetDragState = () => {
-        setActiveId(null);
-        setActiveType(null);
-        setPreviewColumnDelta(0);
-    };
-
-    // Custom collision detection - we track position via delta, not droppables
-    const collisionDetection = () => [];
+    }, [days, events, offset, activeEventId, activeType, previewDelta]);
 
     const maxLanes = useMemo(() => {
         if (positionedEvents.length === 0) return 0;
         return Math.max(...positionedEvents.map(e => e.lane)) + 1;
     }, [positionedEvents]);
 
-    const eventsHeight = maxLanes > 0 ? maxLanes * 20 + 4 : 0;
-    const minHeight = Math.max(48, eventsHeight + 20);
     const dayWidth = 100 / totalColumns;
-
-    const activeEvent = activeId ? eventsById.get(activeId) : null;
 
     return (
         <div className="flex w-full flex-1 min-h-0 bg-background border-b border-gray-100 dark:border-zinc-800/50 last:border-0 hover:bg-gray-50/10 transition-colors group">
@@ -413,80 +205,47 @@ export function MonthRow({ month, events, totalColumns }: MonthRowProps) {
                     })}
                 </div>
 
-                {/* Events Layer with DND Context */}
-                <DndContext
-                    sensors={sensors}
-                    collisionDetection={collisionDetection}
-                    onDragStart={handleDragStart}
-                    onDragMove={handleDragMove}
-                    onDragEnd={handleDragEnd}
-                >
-                    <div className="absolute inset-0 pointer-events-none z-20">
-                        {positionedEvents.map((event) => {
-                            const isActive = activeId === event.id;
-                            const isResizing = isActive && (activeType === 'resize-start' || activeType === 'resize-end')
-                                ? (activeType === 'resize-start' ? 'start' : 'end')
-                                : null;
-                            const isDragging = isActive && activeType === 'drag';
+                {/* Events Layer */}
+                <div className="absolute inset-0 pointer-events-none z-20">
+                    {positionedEvents.map((event) => {
+                        const isActive = activeEventId === event.id;
+                        const isDragging = isActive && activeType === 'drag';
 
-                            return (
-                                <div
-                                    key={event.id}
-                                    data-event
-                                    className="pointer-events-auto"
-                                    style={{ position: 'absolute', inset: 0 }}
-                                >
-                                    <DraggableEventWrapper
-                                        event={event}
-                                        dayWidth={dayWidth}
-                                        previewOffset={isActive ? previewColumnDelta : 0}
-                                        isResizing={isResizing}
-                                        isDragging={isDragging}
-                                        justDraggedRef={justDraggedRef}
-                                        onResizeStart={(handle) => {
-                                            // Resize is initiated via separate drag ID
-                                        }}
-                                        onClick={() => openModal(event)}
-                                    />
-                                </div>
-                            );
-                        })}
-                    </div>
-
-                    <DragOverlay dropAnimation={null}>
-                        {activeType === 'drag' && activeEvent ? (
-                            <EventDragOverlay event={activeEvent} />
-                        ) : null}
-                    </DragOverlay>
-                </DndContext>
+                        return (
+                            <DraggableEvent
+                                key={event.id}
+                                event={event}
+                                dayWidth={dayWidth}
+                                isDragging={isDragging}
+                                isResizing={isActive && (activeType === 'resize-start' || activeType === 'resize-end')}
+                                justDragged={justDragged}
+                                onOpenModal={() => openModal(event)}
+                            />
+                        );
+                    })}
+                </div>
             </div>
         </div>
     );
 }
 
-// Wrapper that makes the event draggable
-import { useDraggable } from '@dnd-kit/core';
-
-function DraggableEventWrapper({
+// Draggable event component
+function DraggableEvent({
     event,
     dayWidth,
-    previewOffset,
-    isResizing,
     isDragging,
-    justDraggedRef,
-    onResizeStart,
-    onClick,
+    isResizing,
+    justDragged,
+    onOpenModal,
 }: {
     event: PositionedEventStrip;
     dayWidth: number;
-    previewOffset: number;
-    isResizing: 'start' | 'end' | null;
     isDragging: boolean;
-    justDraggedRef: React.RefObject<boolean>;
-    onResizeStart: (handle: 'start' | 'end') => void;
-    onClick: () => void;
+    isResizing: boolean;
+    justDragged: boolean;
+    onOpenModal: () => void;
 }) {
-    const { attributes, listeners, setNodeRef } = useDraggable({
+    const { attributes, listeners, setNodeRef, transform } = useDraggable({
         id: event.id,
     });
 
@@ -500,30 +259,18 @@ function DraggableEventWrapper({
 
     const cat = CALENDAR_CATEGORIES[event.category];
 
-    let displayStartIndex = event.startIndex;
-    let displayEndIndex = event.endIndex;
-
-    if (isResizing === 'start') {
-        displayStartIndex = Math.min(event.startIndex + previewOffset, event.endIndex);
-    } else if (isResizing === 'end') {
-        displayEndIndex = Math.max(event.endIndex + previewOffset, event.startIndex);
-    } else if (isDragging) {
-        displayStartIndex = event.startIndex + previewOffset;
-        displayEndIndex = event.endIndex + previewOffset;
-    }
-
-    const leftPercent = displayStartIndex * dayWidth;
-    const columnSpan = displayEndIndex - displayStartIndex + 1;
-    const widthPercent = columnSpan * dayWidth;
+    const leftPercent = event.startIndex * dayWidth;
+    const widthPercent = event.columnSpan * dayWidth;
 
     return (
         <div
             ref={setNodeRef}
             {...listeners}
             {...attributes}
+            data-event
             data-event-id={event.id}
             className={cn(
-                "absolute h-4 flex items-center px-1.5 text-[10px] font-medium group/event",
+                "absolute h-4 flex items-center px-1.5 text-[10px] font-medium group/event pointer-events-auto",
                 isDragging ? "cursor-grabbing opacity-50" : "cursor-grab",
                 "rounded shadow-sm hover:shadow-md hover:z-30",
                 isResizing && "opacity-75",
@@ -541,7 +288,9 @@ function DraggableEventWrapper({
             title={`${event.title} (${format(new Date(event.start_date), 'MMM d')} - ${format(new Date(event.end_date), 'MMM d')})`}
             onClick={(e) => {
                 e.stopPropagation();
-                if (!isDragging && !isResizing && !justDraggedRef.current) onClick();
+                if (!isDragging && !isResizing && !justDragged) {
+                    onOpenModal();
+                }
             }}
         >
             {/* Start Resize Handle */}

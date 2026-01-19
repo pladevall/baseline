@@ -27,8 +27,8 @@ function CalendarPageContent({ batchModeOpen, setBatchModeOpen }: CalendarPageCo
     // Wide mode keyboard shortcut
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
-            // Cmd+Shift+W for wide mode
-            if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'W') {
+            // Option + W for wide mode
+            if (e.altKey && (e.key === 'w' || e.key === 'W' || e.key === '∑')) {
                 e.preventDefault();
                 toggleWideMode();
             }
@@ -40,11 +40,14 @@ function CalendarPageContent({ batchModeOpen, setBatchModeOpen }: CalendarPageCo
 
     return (
         <div className={cn(
-            "mx-auto flex flex-col flex-1 min-h-0 transition-all duration-300 py-3 sm:py-4",
-            isWideMode ? "w-full px-2" : "max-w-7xl px-3 sm:px-4"
+            "mx-auto flex flex-col flex-1 min-h-0 transition-all duration-300 ease-in-out",
+            isWideMode ? "max-w-full px-2 py-2" : "max-w-7xl px-3 sm:px-4 py-3 sm:py-4"
         )}>
             {/* Header matching exactly app/page.tsx */}
-            <header className="flex items-center justify-between mb-3 sm:mb-4 flex-shrink-0">
+            <header className={cn(
+                "flex items-center justify-between mb-3 sm:mb-4 flex-shrink-0",
+                isWideMode && "pl-2"
+            )}>
                 <div>
                     <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">2026</h1>
                     <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -61,12 +64,10 @@ function CalendarPageContent({ batchModeOpen, setBatchModeOpen }: CalendarPageCo
                     </button>
                     <button
                         onClick={toggleWideMode}
-                        title={isWideMode ? "Normal view (Cmd+Shift+W)" : "Wide view (Cmd+Shift+W)"}
+                        title={isWideMode ? "Normal view (Option+W)" : "Wide view (Option+W)"}
                         className={cn(
-                            "p-2 rounded-lg transition-colors",
-                            isWideMode
-                                ? "text-blue-600 dark:text-blue-400"
-                                : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
+                            "p-2 rounded-lg transition-colors text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800",
+                            isWideMode && "bg-gray-100 dark:bg-gray-800"
                         )}
                     >
                         {isWideMode ? <Minimize2 size={18} /> : <Maximize2 size={18} />}

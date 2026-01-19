@@ -89,8 +89,8 @@ export function EventModal() {
                 return;
             }
 
-            // Alt/Cmd + number to select category (1-6)
-            if ((e.altKey || e.metaKey) && e.key >= '1' && e.key <= '6') {
+            // Ctrl + number to select category (1-6) - works even while typing
+            if (e.ctrlKey && !e.metaKey && !e.altKey && e.key >= '1' && e.key <= '6') {
                 e.preventDefault();
                 const categories = Object.keys(CALENDAR_CATEGORIES) as CalendarCategoryKey[];
                 const index = parseInt(e.key) - 1;
@@ -200,7 +200,13 @@ export function EventModal() {
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+        <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+            onClick={(e) => {
+                // Close on backdrop click (not modal content)
+                if (e.target === e.currentTarget) closeModal();
+            }}
+        >
             <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-gray-800 p-6 rounded-lg w-full max-w-md shadow-xl transition-colors">
                 <div className="flex justify-between items-center mb-4">
                     <h2 className="text-sm font-medium text-gray-600 dark:text-gray-400 tracking-wide">
