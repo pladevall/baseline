@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import type { Bet, Belief, BoldTake, UserSettings } from '@/lib/practice/types';
 import { UPSIDE_OPTIONS } from '@/lib/practice/types';
 import { calculateBetScore, getScoreColor, getScoreLabel, parseTimelineYears } from '@/lib/practice/bet-scoring';
@@ -128,7 +128,7 @@ export default function BetsTable({ bets, beliefs, boldTakes, userSettings, onRe
     const [isSaving, setIsSaving] = useState(false);
 
     // Sync salary input when userSettings changes
-    React.useEffect(() => {
+    useEffect(() => {
         setSalaryInput(String(userSettings?.annual_salary ?? 150000));
     }, [userSettings?.annual_salary]);
 
