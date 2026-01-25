@@ -321,7 +321,9 @@ export default function BetsTable({ bets, beliefs, boldTakes, userSettings, onRe
         if (!confirm('Delete this bet? Linked beliefs and actions will be unlinked.')) return;
         try {
             const res = await fetch(`/api/practice/bets/${betId}`, { method: 'DELETE' });
-            if (res.ok) onRefresh?.();
+            if (res.ok) {
+                onRefresh?.();
+            }
         } catch (error) {
             console.error('Error deleting bet:', error);
         }
@@ -482,15 +484,15 @@ export default function BetsTable({ bets, beliefs, boldTakes, userSettings, onRe
                                 </svg>
                             </button>
                             {isAddMenuOpen && (
-                                <div className="absolute right-0 mt-2 w-40 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg z-10">
+                                <div className="absolute right-0 mt-2 w-40 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg p-1 z-10">
                                     <button
                                         onClick={() => {
                                             setIsFormOpen(true);
                                             setIsAddMenuOpen(false);
                                         }}
-                                        className="block w-full text-left px-4 py-2.5 text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                                        className="block w-full text-left px-3 py-2 text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
                                     >
-                                        + New Bet
+                                        New Bet
                                     </button>
                                     {!isCompleted && (
                                         <button
@@ -498,9 +500,9 @@ export default function BetsTable({ bets, beliefs, boldTakes, userSettings, onRe
                                                 onOpenPracticeModal?.();
                                                 setIsAddMenuOpen(false);
                                             }}
-                                            className="block w-full text-left px-4 py-2.5 text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                                            className="block w-full text-left px-3 py-2 text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
                                         >
-                                            + New Action
+                                            New Action
                                         </button>
                                     )}
                                 </div>
@@ -871,7 +873,7 @@ export default function BetsTable({ bets, beliefs, boldTakes, userSettings, onRe
                                                                             )}
                                                                         </div>
                                                                     </td>
-                                                                    <td className="px-4 py-2 text-center">
+                                                                    <td className="px-5 py-2 text-center">
                                                                         <Tooltip content="Auto-calculated from sum of linked actions">
                                                                             <span className="text-xs text-gray-700 dark:text-gray-300 font-medium cursor-help">
                                                                                 {(() => {
@@ -882,7 +884,7 @@ export default function BetsTable({ bets, beliefs, boldTakes, userSettings, onRe
                                                                             </span>
                                                                         </Tooltip>
                                                                     </td>
-                                                                    <td className="px-4 py-2 text-center" onClick={(e) => e.stopPropagation()}>
+                                                                    <td className="px-5 py-2 text-center" onClick={(e) => e.stopPropagation()}>
                                                                         {editingField?.betId === belief.id && editingField?.field === `belief-confidence-${belief.id}` ? (
                                                                             <input
                                                                                 autoFocus
@@ -922,11 +924,11 @@ export default function BetsTable({ bets, beliefs, boldTakes, userSettings, onRe
                                                                             </button>
                                                                         )}
                                                                     </td>
-                                                                    <td className="px-4 py-2"></td>
-                                                                    <td className="px-4 py-2"></td>
-                                                                    <td className="px-4 py-2"></td>
-                                                                    <td className="px-4 py-2"></td>
-                                                                    <td className="px-4 py-2 text-center" onClick={(e) => e.stopPropagation()}>
+                                                                    <td className="px-5 py-2"></td>
+                                                                    <td className="px-5 py-2"></td>
+                                                                    <td className="px-5 py-2"></td>
+                                                                    <td className="px-5 py-2"></td>
+                                                                    <td className="px-5 py-2 text-center" onClick={(e) => e.stopPropagation()}>
                                                                         <Tooltip content={
                                                                             <div className="space-y-2 max-w-xs">
                                                                                 <div className="font-semibold text-white">Belief Status: {belief.status}</div>
@@ -955,7 +957,7 @@ export default function BetsTable({ bets, beliefs, boldTakes, userSettings, onRe
                                                                             </select>
                                                                         </Tooltip>
                                                                     </td>
-                                                                    <td className="px-4 py-2"></td>
+                                                                    <td className="px-5 py-2"></td>
                                                                 </tr>
                                                             )}
 
@@ -997,7 +999,7 @@ export default function BetsTable({ bets, beliefs, boldTakes, userSettings, onRe
                                                                             </div>
                                                                         </div>
                                                                     </td>
-                                                                    <td className="px-4 py-2 text-center" onClick={(e) => e.stopPropagation()}>
+                                                                    <td className="px-5 py-2 text-center" onClick={(e) => e.stopPropagation()}>
                                                                         {editingField?.betId === take.id && editingField?.field === `action-duration-${take.id}` ? (
                                                                             <input
                                                                                 autoFocus
@@ -1036,7 +1038,7 @@ export default function BetsTable({ bets, beliefs, boldTakes, userSettings, onRe
                                                                             </button>
                                                                         )}
                                                                     </td>
-                                                                    <td className="px-4 py-2 text-center" onClick={(e) => e.stopPropagation()}>
+                                                                    <td className="px-5 py-2 text-center" onClick={(e) => e.stopPropagation()}>
                                                                         {editingField?.betId === take.id && editingField?.field === `action-confidence-${take.id}` ? (
                                                                             <input
                                                                                 autoFocus
@@ -1076,11 +1078,11 @@ export default function BetsTable({ bets, beliefs, boldTakes, userSettings, onRe
                                                                             </button>
                                                                         )}
                                                                     </td>
-                                                                    <td className="px-4 py-2"></td>
-                                                                    <td className="px-4 py-2"></td>
-                                                                    <td className="px-4 py-2"></td>
-                                                                    <td className="px-4 py-2"></td>
-                                                                    <td className="px-4 py-2 text-center" onClick={(e) => e.stopPropagation()}>
+                                                                    <td className="px-5 py-2"></td>
+                                                                    <td className="px-5 py-2"></td>
+                                                                    <td className="px-5 py-2"></td>
+                                                                    <td className="px-5 py-2"></td>
+                                                                    <td className="px-5 py-2 text-center" onClick={(e) => e.stopPropagation()}>
                                                                         <Tooltip content={
                                                                             <div className="space-y-2 max-w-xs">
                                                                                 <div className="font-semibold text-white">Action Status: {take.status}</div>
@@ -1108,7 +1110,7 @@ export default function BetsTable({ bets, beliefs, boldTakes, userSettings, onRe
                                                                             </select>
                                                                         </Tooltip>
                                                                     </td>
-                                                                    <td className="px-4 py-2"></td>
+                                                                    <td className="px-5 py-2"></td>
                                                                 </tr>
                                                             ))}
                                                         </React.Fragment>
@@ -1151,7 +1153,7 @@ export default function BetsTable({ bets, beliefs, boldTakes, userSettings, onRe
                                                                 )}
                                                             </div>
                                                         </td>
-                                                        <td className="px-4 py-2 text-center" onClick={(e) => e.stopPropagation()}>
+                                                        <td className="px-5 py-2 text-center" onClick={(e) => e.stopPropagation()}>
                                                             {editingField?.betId === take.id && editingField?.field === `action-duration-${take.id}` ? (
                                                                 <input
                                                                     autoFocus
@@ -1190,7 +1192,7 @@ export default function BetsTable({ bets, beliefs, boldTakes, userSettings, onRe
                                                                 </button>
                                                             )}
                                                         </td>
-                                                        <td className="px-4 py-2 text-center" onClick={(e) => e.stopPropagation()}>
+                                                        <td className="px-5 py-2 text-center" onClick={(e) => e.stopPropagation()}>
                                                             {editingField?.betId === take.id && editingField?.field === `action-confidence-${take.id}` ? (
                                                                 <input
                                                                     autoFocus
@@ -1230,11 +1232,11 @@ export default function BetsTable({ bets, beliefs, boldTakes, userSettings, onRe
                                                                 </button>
                                                             )}
                                                         </td>
-                                                        <td className="px-4 py-2"></td>
-                                                        <td className="px-4 py-2"></td>
-                                                        <td className="px-4 py-2"></td>
-                                                        <td className="px-4 py-2"></td>
-                                                        <td className="px-4 py-2 text-center" onClick={(e) => e.stopPropagation()}>
+                                                        <td className="px-5 py-2"></td>
+                                                        <td className="px-5 py-2"></td>
+                                                        <td className="px-5 py-2"></td>
+                                                        <td className="px-5 py-2"></td>
+                                                        <td className="px-5 py-2 text-center" onClick={(e) => e.stopPropagation()}>
                                                             <Tooltip content={
                                                                 <div className="space-y-2 max-w-xs">
                                                                     <div className="font-semibold text-white">Action Status: {take.status}</div>
@@ -1262,7 +1264,7 @@ export default function BetsTable({ bets, beliefs, boldTakes, userSettings, onRe
                                                                 </select>
                                                             </Tooltip>
                                                         </td>
-                                                        <td className="px-4 py-2"></td>
+                                                        <td className="px-5 py-2"></td>
                                                     </tr>
                                                 ))}
 
@@ -1309,7 +1311,15 @@ export default function BetsTable({ bets, beliefs, boldTakes, userSettings, onRe
                     <div className="bg-white dark:bg-gray-900 rounded-xl shadow-xl max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto">
                         <div className="p-6">
                             <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Edit Bet</h3>
-                            <BetForm bet={editingBet} onSave={handleUpdateBet} onCancel={() => setEditingBet(null)} />
+                            <BetForm
+                                bet={editingBet}
+                                onSave={handleUpdateBet}
+                                onCancel={() => setEditingBet(null)}
+                                onDelete={async () => {
+                                    await handleDeleteBet(editingBet.id);
+                                    setEditingBet(null);
+                                }}
+                            />
                         </div>
                     </div>
                 </div>

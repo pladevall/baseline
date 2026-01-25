@@ -188,6 +188,10 @@ export default function BetsList({ bets, beliefs, boldTakes, onRefresh }: BetsLi
                                 bet={editingBet}
                                 onSave={handleUpdateBet}
                                 onCancel={() => setEditingBet(null)}
+                                onDelete={async () => {
+                                    await handleDeleteBet(editingBet.id);
+                                    setEditingBet(null);
+                                }}
                             />
                         </div>
                     </div>
