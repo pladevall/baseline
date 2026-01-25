@@ -21,6 +21,7 @@ interface BatchEvent {
     category: CalendarCategoryKey;
     startDate: string;
     endDate: string;
+    notes: string;
 }
 
 export function BatchInputMode({ isOpen, onClose, onEventCreated }: BatchInputModeProps) {
@@ -31,6 +32,7 @@ export function BatchInputMode({ isOpen, onClose, onEventCreated }: BatchInputMo
         category: 'deep_work',
         startDate: format(new Date(), 'yyyy-MM-dd'),
         endDate: format(new Date(), 'yyyy-MM-dd'),
+        notes: '',
     });
     const [isSaving, setIsSaving] = useState(false);
 
@@ -58,6 +60,7 @@ export function BatchInputMode({ isOpen, onClose, onEventCreated }: BatchInputMo
                     category: 'deep_work',
                     startDate: format(new Date(), 'yyyy-MM-dd'),
                     endDate: format(new Date(), 'yyyy-MM-dd'),
+                    notes: '',
                 });
                 await refreshEvents();
                 onEventCreated?.();
@@ -79,6 +82,7 @@ export function BatchInputMode({ isOpen, onClose, onEventCreated }: BatchInputMo
             category: 'deep_work',
             startDate: format(new Date(), 'yyyy-MM-dd'),
             endDate: format(new Date(), 'yyyy-MM-dd'),
+            notes: '',
         });
         onClose();
     }, [refreshEvents, onClose]);
@@ -201,6 +205,8 @@ export function BatchInputMode({ isOpen, onClose, onEventCreated }: BatchInputMo
                         setEndDate={(endDate) => setCurrentEvent({ ...currentEvent, endDate })}
                         category={currentEvent.category}
                         setCategory={(category) => setCurrentEvent({ ...currentEvent, category })}
+                        notes={currentEvent.notes}
+                        setNotes={(notes) => setCurrentEvent({ ...currentEvent, notes })}
                         disabled={isSaving}
                     />
 
