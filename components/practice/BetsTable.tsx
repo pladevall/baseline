@@ -104,9 +104,7 @@ export default function BetsTable({ bets, beliefs, boldTakes, userSettings, onRe
 
     // Compute scores and sort
     const sortedBets = useMemo(() => {
-        return [...bets]
-            .map(bet => ({ ...bet, bet_score: bet.bet_score ?? calculateBetScore(bet) }))
-            .sort((a, b) => (b.bet_score ?? 0) - (a.bet_score ?? 0));
+        return [...bets].map(bet => ({ ...bet, bet_score: bet.bet_score ?? calculateBetScore(bet) }));
     }, [bets]);
 
     const toggleBet = (betId: string) => {
@@ -259,6 +257,17 @@ export default function BetsTable({ bets, beliefs, boldTakes, userSettings, onRe
             console.error('Error updating action duration:', error);
         }
     }, [onRefresh]);
+
+    const formatEstimatedDate = useCallback((days: number) => {
+        if (!days || days <= 0) return null;
+        const target = new Date();
+        target.setDate(target.getDate() + days);
+        return target.toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric',
+        });
+    }, []);
 
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -859,12 +868,23 @@ export default function BetsTable({ bets, beliefs, boldTakes, userSettings, onRe
                                                                         </div>
                                                                     </td>
                                                                     <td className="px-5 py-2 text-center">
-                                                                        <Tooltip content="Auto-calculated from sum of linked actions">
+                                                                        <Tooltip content={(() => {
+                                                                            const derived = calculateBeliefDuration(belief.id, linkedTakes);
+                                                                            const fallback = belief.duration_days ?? 0;
+                                                                            const days = derived > 0 ? derived : fallback;
+                                                                            return (
+                                                                                <div className="space-y-1">
+                                                                                    <div>Auto-calculated from sum of linked actions.</div>
+                                                                                    <div className="text-xs text-gray-300">Estimated: {formatEstimatedDate(days) ?? '—'}</div>
+                                                                                </div>
+                                                                            );
+                                                                        })()}>
                                                                             <span className="text-xs text-gray-700 dark:text-gray-300 font-medium cursor-help">
                                                                                 {(() => {
                                                                                     const derived = calculateBeliefDuration(belief.id, linkedTakes);
                                                                                     const fallback = belief.duration_days ?? 0;
-                                                                                    return `${derived > 0 ? derived : fallback}d`;
+                                                                                    const days = derived > 0 ? derived : fallback;
+                                                                                    return `${days}d`;
                                                                                 })()}
                                                                             </span>
                                                                         </Tooltip>
@@ -1012,15 +1032,17 @@ export default function BetsTable({ bets, beliefs, boldTakes, userSettings, onRe
                                                                                 className="w-16 px-2 py-0.5 text-xs text-center border border-blue-500 rounded bg-blue-50 dark:bg-blue-900/20"
                                                                             />
                                                                         ) : (
-                                                                            <button
-                                                                                onClick={() => {
-                                                                                    setEditingField({ betId: take.id, field: `action-duration-${take.id}` });
-                                                                                    setEditValue(String(take.duration_days ?? 30));
-                                                                                }}
-                                                                                className="text-xs text-gray-400 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 hover:underline"
-                                                                            >
-                                                                                {take.duration_days ?? 30}d
-                                                                            </button>
+                                                                            <Tooltip content={`Estimated: ${formatEstimatedDate(take.duration_days ?? 30) ?? '—'}`}>
+                                                                                <button
+                                                                                    onClick={() => {
+                                                                                        setEditingField({ betId: take.id, field: `action-duration-${take.id}` });
+                                                                                        setEditValue(String(take.duration_days ?? 30));
+                                                                                    }}
+                                                                                    className="text-xs text-gray-400 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 hover:underline cursor-help"
+                                                                                >
+                                                                                    {take.duration_days ?? 30}d
+                                                                                </button>
+                                                                            </Tooltip>
                                                                         )}
                                                                     </td>
                                                                     <td className="px-5 py-2 text-center" onClick={(e) => e.stopPropagation()}>
@@ -1168,15 +1190,17 @@ export default function BetsTable({ bets, beliefs, boldTakes, userSettings, onRe
                                                                     className="w-16 px-2 py-0.5 text-xs text-center border border-blue-500 rounded bg-blue-50 dark:bg-blue-900/20"
                                                                 />
                                                             ) : (
-                                                                <button
-                                                                    onClick={() => {
-                                                                        setEditingField({ betId: take.id, field: `action-duration-${take.id}` });
-                                                                        setEditValue(String(take.duration_days ?? 30));
-                                                                    }}
-                                                                    className="text-xs text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:underline"
-                                                                >
-                                                                    {take.duration_days ?? 30}d
-                                                                </button>
+                                                                <Tooltip content={`Estimated: ${formatEstimatedDate(take.duration_days ?? 30) ?? '—'}`}>
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            setEditingField({ betId: take.id, field: `action-duration-${take.id}` });
+                                                                            setEditValue(String(take.duration_days ?? 30));
+                                                                        }}
+                                                                        className="text-xs text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:underline cursor-help"
+                                                                    >
+                                                                        {take.duration_days ?? 30}d
+                                                                    </button>
+                                                                </Tooltip>
                                                             )}
                                                         </td>
                                                         <td className="px-5 py-2 text-center" onClick={(e) => e.stopPropagation()}>

@@ -380,7 +380,7 @@ export async function getBets(): Promise<Bet[]> {
     const { data, error } = await supabase
         .from('bets')
         .select('*')
-        .order('bet_score', { ascending: false, nullsFirst: false });
+        .order('created_at', { ascending: true });
 
     if (error) {
         console.error('Error fetching bets:', error);

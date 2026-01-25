@@ -941,14 +941,17 @@ function CategorySection({
               {dataColumns.map((col) => {
                 if (col.type === 'dexa') {
                   const dexaValue = getDexaValueForMetric(col.data, metric.key as string);
+                  const displayDexaValue = metric.key === 'bodyFatPercentage' && typeof dexaValue === 'number'
+                    ? Math.floor(dexaValue * 10) / 10
+                    : dexaValue;
                   return (
                     <td
                       key={col.data.id}
                       className="px-3 py-1.5 text-center border-l border-amber-200 dark:border-amber-800/50 bg-amber-50/30 dark:bg-amber-900/10"
                     >
-                      {dexaValue !== null ? (
+                      {displayDexaValue !== null ? (
                         <span className="text-xs tabular-nums font-medium text-amber-700 dark:text-amber-300">
-                          {dexaValue.toFixed(1)}
+                          {displayDexaValue.toFixed(1)}
                         </span>
                       ) : (
                         <span className="text-xs text-gray-300 dark:text-gray-600">—</span>
@@ -968,7 +971,9 @@ function CategorySection({
                   const { color, arrow } = getTrendIndicator(numValue, previousValue, metric);
                   const rangeStatus = getRangeStatus(numValue, metric);
                   const { dotColor, label: rangeLabel } = getRangeIndicator(rangeStatus, metric);
-                  const displayValue = formatValue(value);
+                  const displayValue = metric.key === 'bodyFatPercentage' && typeof value === 'number'
+                    ? (Math.floor(value * 10) / 10).toFixed(1)
+                    : formatValue(value);
 
                   return (
                     <td

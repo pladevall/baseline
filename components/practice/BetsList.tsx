@@ -19,9 +19,7 @@ export default function BetsList({ bets, beliefs, boldTakes, onRefresh }: BetsLi
 
     // Compute scores and sort
     const sortedBets = useMemo(() => {
-        return [...bets]
-            .map(bet => ({ ...bet, bet_score: bet.bet_score ?? calculateBetScore(bet) }))
-            .sort((a, b) => (b.bet_score ?? 0) - (a.bet_score ?? 0));
+        return [...bets].map(bet => ({ ...bet, bet_score: bet.bet_score ?? calculateBetScore(bet) }));
     }, [bets]);
 
     // Unassigned items
