@@ -2,7 +2,6 @@
 
 import { useState, useMemo } from 'react';
 import type { Bet, Belief, BoldTake } from '@/lib/practice/types';
-import { calculateBetScore, getScoreColor, getScoreLabel } from '@/lib/practice/bet-scoring';
 
 interface BetCardProps {
     bet: Bet;
@@ -32,10 +31,6 @@ export default function BetCard({
     const [isExpanded, setIsExpanded] = useState(false);
     const [showLinkMenu, setShowLinkMenu] = useState<'belief' | 'action' | null>(null);
 
-    // Calculate bet score
-    const score = useMemo(() => bet.bet_score ?? calculateBetScore(bet), [bet]);
-    const scoreColor = getScoreColor(score);
-    const scoreLabel = getScoreLabel(score);
 
     // Confidence color (0-100 scale: Red < 50, Yellow 50-80, Green >= 80)
     const confidenceColor = bet.confidence >= 80 ? 'text-green-500' :
@@ -56,10 +51,6 @@ export default function BetCard({
                     <div className="flex-1">
                         <div className="flex items-center gap-3">
                             <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100">{bet.name}</h3>
-                            {/* Bet Score Badge */}
-                            <span className={`px-2 py-0.5 text-xs font-bold rounded-full bg-gray-100 dark:bg-gray-800 ${scoreColor}`}>
-                                {score.toFixed(2)} · {scoreLabel}
-                            </span>
                         </div>
                         {bet.description && (
                             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{bet.description}</p>

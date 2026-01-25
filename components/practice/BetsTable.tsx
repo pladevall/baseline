@@ -3,58 +3,11 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import type { Bet, Belief, BoldTake, UserSettings } from '@/lib/practice/types';
 import { UPSIDE_OPTIONS } from '@/lib/practice/types';
-import { calculateBetScore, getScoreColor, getScoreLabel, parseTimelineYears } from '@/lib/practice/bet-scoring';
+import { parseTimelineYears } from '@/lib/practice/bet-scoring';
 import { formatDownside, formatCurrency } from '@/lib/practice/formatting';
 import { getEffectiveConfidence, isComputedConfidence, calculateExpectedValue, calculateBetTimeline, calculateAutoUpside, calculateBeliefDuration } from '@/lib/practice/bet-calculations';
 import BetForm from './BetForm';
 import Tooltip from '@/components/Tooltip';
-
-// Score guidance helper
-function getScoreGuidance(score: number): {
-    priority: string;
-    timeAllocation: string;
-    action: string;
-    color: string;
-} {
-    if (score >= 5) {
-        return {
-            priority: 'Must Do - Top Priority',
-            timeAllocation: '80-90% of your time',
-            action: 'This is your highest leverage bet. Focus here first.',
-            color: 'text-green-600 dark:text-green-400'
-        };
-    }
-    if (score >= 3) {
-        return {
-            priority: 'Should Do - High Priority',
-            timeAllocation: '60-80% of your time',
-            action: 'Strong opportunity. Allocate significant effort here.',
-            color: 'text-green-500'
-        };
-    }
-    if (score >= 1) {
-        return {
-            priority: 'Could Do - Medium Priority',
-            timeAllocation: '20-40% of your time',
-            action: 'Moderate opportunity. Balance with higher-priority bets.',
-            color: 'text-yellow-500'
-        };
-    }
-    if (score >= 0.5) {
-        return {
-            priority: 'Consider Deferring - Low Priority',
-            timeAllocation: '5-20% of your time',
-            action: 'Weak opportunity. Only pursue if higher priorities are handled.',
-            color: 'text-orange-500'
-        };
-    }
-    return {
-        priority: 'Defer or Drop - Very Low Priority',
-        timeAllocation: 'Minimal to no time',
-        action: 'Poor risk-adjusted return. Consider pivoting or dropping.',
-        color: 'text-red-500'
-    };
-}
 
 // Status guidance helpers
 const BELIEF_STATUS_GUIDANCE = {
@@ -158,9 +111,7 @@ export default function BetsTable({ bets, beliefs, boldTakes, userSettings, onRe
 
     const handleSaveInlineEdit = useCallback(async (betId: string, field: string, clearValue: boolean = false) => {
         const trimmedValue = editValue.trim();
-        if (!trimmedValue && field === 'downside_override') {
-            // Allow empty downside_override (undefined)
-        } else if (!trimmedValue && !clearValue) {
+        if (!trimmedValue && !clearValue) {
             setEditingField(null);
             return;
         }
@@ -172,14 +123,6 @@ export default function BetsTable({ bets, beliefs, boldTakes, userSettings, onRe
                 updates.upside_multiplier = null;
             } else {
                 updates.upside_multiplier = parseFloat(trimmedValue);
-            }
-        } else if (field === 'downside_override') {
-            // Convert to number, handling various input formats
-            if (!trimmedValue) {
-                updates.downside_override = null;
-            } else {
-                const numValue = parseFloat(trimmedValue.replace(/[^0-9.-]/g, ''));
-                updates.downside_override = isNaN(numValue) ? null : numValue;
             }
         }
 
@@ -564,9 +507,6 @@ export default function BetsTable({ bets, beliefs, boldTakes, userSettings, onRe
                                 <th className="px-3 py-2 text-center text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[90px]">
                                     Downside
                                 </th>
-                                <th className="px-3 py-2 text-center text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[80px]">
-                                    Score
-                                </th>
                                 <th className="px-3 py-2 text-center text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[70px]">
                                     Status
                                 </th>
@@ -588,22 +528,19 @@ export default function BetsTable({ bets, beliefs, boldTakes, userSettings, onRe
                                     : detailFilter === 'beliefs'
                                         ? !hasBeliefs
                                         : !hasActions;
-                                const score = bet.bet_score ?? calculateBetScore(bet);
-                                const scoreColor = getScoreColor(score);
                                 const isEditing = editingField?.betId === bet.id;
                                 const timelineYears = calculateBetTimeline(linkedBeliefs, linkedTakes);
                                 const effectiveConfidence = getEffectiveConfidence(bet);
 
                                 // Calculate downside (opportunity cost)
                                 const calculatedDownside = timelineYears * (userSettings?.annual_salary ?? 150000);
-                                const effectiveDownside = bet.downside_override ?? calculatedDownside;
 
                                 // Calculate upside multiplier (auto or manual)
                                 const autoUpside = calculateAutoUpside(timelineYears, effectiveConfidence);
                                 const displayUpside = bet.upside_multiplier || autoUpside;
 
                                 // Calculate expected value: downside × upside_multiplier
-                                const expectedValue = calculateExpectedValue(displayUpside, effectiveDownside);
+                                const expectedValue = calculateExpectedValue(displayUpside, calculatedDownside);
 
                                 return (
                                     <>
@@ -806,7 +743,7 @@ export default function BetsTable({ bets, beliefs, boldTakes, userSettings, onRe
                                                         </div>
                                                         {timelineYears > 0 && (
                                                             <div className="text-xs text-gray-300 mt-1">
-                                                                Downside: {timelineYears.toFixed(2)} yrs × ${userSettings?.annual_salary.toLocaleString() ?? '150,000'}{bet.downside_override && ' (overridden)'}
+                                                                Downside: {timelineYears.toFixed(2)} yrs × ${userSettings?.annual_salary.toLocaleString() ?? '150,000'}
                                                             </div>
                                                         )}
                                                         <div className="text-xs text-gray-300 mt-1">Potential monetary outcome if bet succeeds</div>
@@ -815,20 +752,17 @@ export default function BetsTable({ bets, beliefs, boldTakes, userSettings, onRe
                                                     <span className="cursor-help">{formatCurrency(expectedValue || 0)}</span>
                                                 </Tooltip>
                                             </td>
-                                            {/* Downside - Inline Editable with Rich Tooltip (UPDATED) */}
-                                            <td
-                                                className="px-3 py-2 text-center text-xs text-red-600 dark:text-red-400 font-medium"
-                                                onClick={(e) => e.stopPropagation()}
-                                            >
+                                            {/* Downside - Read-Only with Rich Tooltip */}
+                                            <td className="px-3 py-2 text-center text-xs text-red-600 dark:text-red-400 font-medium">
                                                 {(() => {
                                                     const calculatedDownside = timelineYears * (userSettings?.annual_salary ?? 150000);
-                                                    const effectiveDownside = bet.downside_override ?? calculatedDownside;
 
                                                     return (
                                                         <Tooltip content={
                                                             <div className="space-y-1">
-                                                                <div className="font-semibold text-white">Downside (Opportunity Cost):</div>
-                                                                <div className="text-xs space-y-0.5 font-mono">
+                                                                <div className="font-semibold text-white">Downside:</div>
+                                                                <div className="text-xs text-gray-300 mt-1">Financial cost of pursuing this bet if it goes to zero.</div>
+                                                                <div className="text-xs space-y-0.5 font-mono mt-2">
                                                                     {timelineYears > 0 && (
                                                                         <>
                                                                             <div>{timelineYears.toFixed(2)} yrs × ${userSettings?.annual_salary.toLocaleString() ?? '150,000'}</div>
@@ -836,85 +770,11 @@ export default function BetsTable({ bets, beliefs, boldTakes, userSettings, onRe
                                                                         </>
                                                                     )}
                                                                 </div>
-                                                                {bet.downside_override && (
-                                                                    <div className="text-xs text-amber-300 mt-1">
-                                                                        ✎ Manually overridden
-                                                                    </div>
-                                                                )}
-                                                                <div className="text-xs text-gray-300 mt-1">Time cost of pursuing this bet</div>
                                                             </div>
                                                         }>
-                                                            {isEditing && editingField.field === 'downside_override' ? (
-                                                                <input
-                                                                    autoFocus
-                                                                    type="text"
-                                                                    value={editValue}
-                                                                    onChange={(e) => setEditValue(e.target.value)}
-                                                                    onBlur={() => handleSaveInlineEdit(bet.id, 'downside_override')}
-                                                                    onKeyDown={(e) => {
-                                                                        if (e.key === 'Enter') handleSaveInlineEdit(bet.id, 'downside_override');
-                                                                        if (e.key === 'Escape') setEditingField(null);
-                                                                    }}
-                                                                    placeholder="Leave blank for auto-calc"
-                                                                    className="w-full px-2 py-1 text-xs border border-red-500 rounded bg-red-50 dark:bg-red-900/20"
-                                                                />
-                                                            ) : (
-                                                                <button
-                                                                    onClick={() => handleStartEdit(bet.id, 'downside_override', String(effectiveDownside ?? ''))}
-                                                                    className="hover:bg-red-100 dark:hover:bg-red-900/20 px-2 py-1 rounded text-xs cursor-help"
-                                                                >
-                                                                    {formatDownside(effectiveDownside, true)}
-                                                                    {bet.downside_override && <span className="text-[8px] ml-0.5">✎</span>}
-                                                                </button>
-                                                            )}
-                                                        </Tooltip>
-                                                    );
-                                                })()}
-                                            </td>
-                                            {/* Score with Rich Tooltip */}
-                                            <td className={`px-3 py-2 text-center text-xs font-bold tabular-nums ${scoreColor}`}>
-                                                {(() => {
-                                                    const guidance = getScoreGuidance(score);
-                                                    return (
-                                                        <Tooltip content={
-                                                            <div className="space-y-2">
-                                                                {/* Formula Breakdown */}
-                                                                <div>
-                                                                    <div className="font-semibold text-white">Kelly Score Formula:</div>
-                                                                    <div className="text-xs space-y-0.5 font-mono">
-                                                                        <div>({displayUpside}x × {effectiveConfidence}%) / {timelineYears.toFixed(2)} yrs</div>
-                                                                        <div className="border-t border-gray-600 pt-0.5 mt-0.5">= {score.toFixed(2)}</div>
-                                                                    </div>
-                                                                    {!bet.upside_multiplier && (
-                                                                        <div className="text-[10px] text-blue-400 mt-1">
-                                                                            (Upside auto-calculated: 5 × ({100}/{effectiveConfidence})^0.5 × {timelineYears.toFixed(2)}^0.3)
-                                                                        </div>
-                                                                    )}
-                                                                </div>
-
-                                                                {/* Actionable Guidance */}
-                                                                <div className="border-t border-gray-600 pt-2">
-                                                                    <div className={`font-semibold ${guidance.color}`}>
-                                                                        {guidance.priority}
-                                                                    </div>
-                                                                    <div className="text-xs text-gray-200 mt-1">
-                                                                        <div className="font-medium">Time Allocation:</div>
-                                                                        <div>{guidance.timeAllocation}</div>
-                                                                    </div>
-                                                                    <div className="text-xs text-gray-300 mt-2 italic">
-                                                                        {guidance.action}
-                                                                    </div>
-                                                                </div>
-
-                                                                {/* Score Hierarchy Reference */}
-                                                                <div className="border-t border-gray-600 pt-2">
-                                                                    <div className="text-[10px] text-gray-400">
-                                                                        Score ranges: &gt;5 Excellent | 3-5 Strong | 1-3 Moderate | 0.5-1 Weak | &lt;0.5 Poor
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        }>
-                                                            <span className="cursor-help">{score.toFixed(2)}</span>
+                                                            <span className="cursor-help">
+                                                                {formatDownside(calculatedDownside, true)}
+                                                            </span>
                                                         </Tooltip>
                                                     );
                                                 })()}
