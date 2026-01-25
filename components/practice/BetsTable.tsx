@@ -72,7 +72,7 @@ function DragHandle({ attributes, listeners }: DragHandleProps) {
     return (
         <button
             type="button"
-            className="inline-flex h-6 w-6 items-center justify-center rounded-md border border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-900/80 text-gray-500 opacity-0 transition group-hover:opacity-100 hover:text-gray-700 dark:hover:text-gray-200 cursor-grab active:cursor-grabbing"
+            className="inline-flex h-6 w-6 items-center justify-center rounded-md text-gray-500 opacity-0 transition group-hover:opacity-100 hover:text-gray-700 dark:hover:text-gray-200 cursor-grab active:cursor-grabbing"
             aria-label="Reorder"
             onClick={(e) => e.stopPropagation()}
             onPointerDown={(e) => e.stopPropagation()}
@@ -138,7 +138,7 @@ export default function BetsTable({ bets, beliefs, boldTakes, userSettings, onRe
     const [editValue, setEditValue] = useState('');
     const [salaryInput, setSalaryInput] = useState(String(userSettings?.annual_salary ?? 150000));
     const [isSaving, setIsSaving] = useState(false);
-    const [detailFilter, setDetailFilter] = useState<'all' | 'beliefs' | 'actions'>('all');
+    const [detailFilter, setDetailFilter] = useState<'all' | 'beliefs' | 'actions' | 'done'>('all');
     const [hoveredActionId, setHoveredActionId] = useState<string | null>(null);
     const [isAddMenuOpen, setIsAddMenuOpen] = useState(false);
     const [betOrder, setBetOrder] = useState<string[]>([]);
@@ -652,7 +652,7 @@ export default function BetsTable({ bets, beliefs, boldTakes, userSettings, onRe
 
                     <div className="flex items-center gap-3">
                         <div className="flex items-center rounded-md border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 p-0.5">
-                            {(['all', 'beliefs', 'actions'] as const).map((option) => (
+                            {(['all', 'beliefs', 'actions', 'done'] as const).map((option) => (
                                 <button
                                     key={option}
                                     onClick={() => setDetailFilter(option)}
@@ -729,7 +729,7 @@ export default function BetsTable({ bets, beliefs, boldTakes, userSettings, onRe
                     <table className="w-full text-sm">
                         <thead>
                             <tr className="border-b border-gray-200 dark:border-gray-800">
-                                <th className="px-6 py-3 text-left text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[200px]">
+                                <th className="px-6 py-3 text-left text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[260px]">
                                     Name
                                 </th>
                                 <th className="px-5 py-3 text-center text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[90px]">
@@ -778,16 +778,19 @@ export default function BetsTable({ bets, beliefs, boldTakes, userSettings, onRe
                                         if (aTime !== bTime) return aTime - bTime;
                                         return a.id.localeCompare(b.id);
                                     });
-                                const showBeliefs = detailFilter !== 'actions';
-                                const showActions = detailFilter !== 'beliefs';
+                                const showBeliefs = detailFilter === 'all' || detailFilter === 'beliefs';
+                                const showActions = detailFilter === 'all' || detailFilter === 'actions' || detailFilter === 'done';
                                 const hasBeliefs = linkedBeliefs.length > 0;
                                 const hasActions = linkedTakes.length > 0;
+                                const hasDoneActions = linkedTakes.some(t => t.status === 'done');
                                 const hasConfidenceData = hasBeliefs || hasActions;
                                 const showEmptyState = detailFilter === 'all'
                                     ? !hasBeliefs && !hasActions
                                     : detailFilter === 'beliefs'
                                         ? !hasBeliefs
-                                        : !hasActions;
+                                        : detailFilter === 'done'
+                                            ? !hasDoneActions
+                                            : !hasActions;
                                 const isEditing = editingField?.betId === bet.id;
                                 const timelineYears = calculateBetTimeline(linkedBeliefs, linkedTakes);
                                 const effectiveConfidence = getEffectiveConfidence(bet);
@@ -864,6 +867,9 @@ export default function BetsTable({ bets, beliefs, boldTakes, userSettings, onRe
                                                                         <div>No actions defined yet</div>
                                                                     )}
                                                                 </div>
+                                                                {totalDays > 0 && (
+                                                                    <div className="text-xs text-gray-300">Estimated: {formatEstimatedDate(totalDays)}</div>
+                                                                )}
                                                                 <div className="text-xs text-gray-300 mt-1">Belief durations roll up from actions, plus unlinked actions</div>
                                                             </div>
                                                         }>
@@ -913,7 +919,7 @@ export default function BetsTable({ bets, beliefs, boldTakes, userSettings, onRe
                                                 <select
                                                     value={bet.status}
                                                     onChange={(e) => handleUpdateBetStatus(bet.id, e.target.value as Bet['status'])}
-                                                    className="h-7 w-24 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 pr-7 text-xs text-gray-700 dark:text-gray-200 text-left"
+                                                    className="h-7 w-28 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 pr-7 text-xs text-gray-700 dark:text-gray-200 text-left"
                                                 >
                                                     <option value="active">Active</option>
                                                     <option value="paused">Paused</option>
@@ -1050,6 +1056,9 @@ export default function BetsTable({ bets, beliefs, boldTakes, userSettings, onRe
                                                     const beliefActions = getOrderedActions(
                                                         linkedTakes.filter(t => t.belief_id === belief.id),
                                                         beliefGroupKey
+                                                    ).filter((take) => detailFilter === 'done'
+                                                        ? take.status === 'done'
+                                                        : take.status !== 'done'
                                                     );
                                                     const beliefActionIds = beliefActions.map((take) => take.id);
                                                     return (
@@ -1167,7 +1176,7 @@ export default function BetsTable({ bets, beliefs, boldTakes, userSettings, onRe
                                                                             <select
                                                                                 value={belief.status}
                                                                                 onChange={(e) => handleUpdateBeliefStatus(belief.id, e.target.value)}
-                                                                                className="h-7 w-24 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 pr-7 text-xs text-gray-700 dark:text-gray-200 cursor-help text-left"
+                                                                                className="h-7 w-28 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 pr-7 text-xs text-gray-700 dark:text-gray-200 cursor-help text-left"
                                                                             >
                                                                                 <option value="untested">Untested</option>
                                                                                 <option value="testing">Testing</option>
@@ -1337,7 +1346,7 @@ export default function BetsTable({ bets, beliefs, boldTakes, userSettings, onRe
                                                                             <select
                                                                                 value={take.status}
                                                                                 onChange={(e) => handleUpdateActionStatus(take.id, e.target.value)}
-                                                                                className="h-7 w-24 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 pr-7 text-xs text-gray-700 dark:text-gray-200 cursor-help text-left"
+                                                                                className="h-7 w-28 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 pr-7 text-xs text-gray-700 dark:text-gray-200 cursor-help text-left"
                                                                             >
                                                                                 <option value="committed">Committed</option>
                                                                                 <option value="done">Done</option>
@@ -1367,6 +1376,9 @@ export default function BetsTable({ bets, beliefs, boldTakes, userSettings, onRe
                                                     const unlinkedActions = getOrderedActions(
                                                         linkedTakes.filter(t => t.bet_id === bet.id && !t.belief_id),
                                                         unlinkedGroupKey
+                                                    ).filter((take) => detailFilter === 'done'
+                                                        ? take.status === 'done'
+                                                        : take.status !== 'done'
                                                     );
                                                     const unlinkedActionIds = unlinkedActions.map((take) => take.id);
 
@@ -1524,7 +1536,7 @@ export default function BetsTable({ bets, beliefs, boldTakes, userSettings, onRe
                                                                 <select
                                                                     value={take.status}
                                                                     onChange={(e) => handleUpdateActionStatus(take.id, e.target.value)}
-                                                                    className="h-7 w-24 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 pr-7 text-xs text-gray-700 dark:text-gray-200 cursor-help text-left"
+                                                                    className="h-7 w-28 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 pr-7 text-xs text-gray-700 dark:text-gray-200 cursor-help text-left"
                                                                 >
                                                                     <option value="committed">Committed</option>
                                                                     <option value="done">Done</option>
