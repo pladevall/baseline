@@ -1,0 +1,46 @@
+{
+  "name": "bia-tracker",
+  "title": "BIA Tracker",
+  "description": "Quickly add beliefs and actions to BIA Tracker.",
+  "icon": "assets/command-icon.svg",
+  "author": "BIA Tracker",
+  "license": "MIT",
+  "commands": [
+    {
+      "name": "add-action",
+      "title": "Add Action",
+      "description": "Create a new action",
+      "mode": "view"
+    },
+    {
+      "name": "add-belief",
+      "title": "Add Belief",
+      "description": "Create a new belief",
+      "mode": "view"
+    }
+  ],
+  "preferences": [
+    {
+      "name": "apiUrl",
+      "type": "textfield",
+      "title": "API Base URL",
+      "description": "Base URL for the app API",
+      "default": "https://bia-tracker-pladevalls-projects.vercel.app"
+    },
+    {
+      "name": "apiToken",
+      "type": "password",
+      "title": "API Token (optional)",
+      "description": "Optional bearer token if your API requires auth",
+      "required": false
+    }
+  ],
+  "dependencies": {
+    "@raycast/api": "^1.83.1",
+    "@raycast/utils": "^1.15.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.7",
+    "typescript": "^5.7.3"
+  }
+}
