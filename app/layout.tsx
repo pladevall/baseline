@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ServiceWorkerRegistration } from "@/components/ServiceWorkerRegistration";
 import KeyboardShortcuts from "@/components/KeyboardShortcuts";
+import { AgentationWrapper } from "@/components/AgentationWrapper";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -52,6 +53,7 @@ export default function RootLayout({
         {children}
         <ServiceWorkerRegistration />
         <KeyboardShortcuts />
+        <AgentationWrapper />
       </body>
     </html>
   );

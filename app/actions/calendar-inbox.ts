@@ -6,6 +6,14 @@ import { revalidatePath } from 'next/cache';
 import { cookies } from 'next/headers';
 import { addDays, format, startOfYear, endOfYear } from 'date-fns';
 import { fetchGoogleEvents, mapGoogleTitleToCategory } from '@/lib/google-calendar';
+import { GoogleGenerativeAI } from '@google/generative-ai';
+import sqlite3 from 'sqlite3';
+import { promisify } from 'util';
+import path from 'path';
+import os from 'os';
+
+const BEAR_DB_PATH = path.join(os.homedir(), 'Library/Group Containers/9K33E3U3T4.net.shinyfrog.bear/Application Data/database.sqlite');
+
 
 export async function getInboxEvents(): Promise<InboxEvent[]> {
     const supabase = await createClient();
@@ -200,9 +208,123 @@ export async function rejectInboxEvent(id: string) {
     revalidatePath('/calendar');
 }
 
-export async function seedInboxEvents(accessToken?: string) {
-    // Re-mapped to sync logic for convenience
-    const logs = await syncGoogleCalendarEvents(accessToken);
-    revalidatePath('/calendar');
+async function syncBearNotes() {
+    const logs: string[] = [];
+    const log = (msg: string) => { console.log(msg); logs.push(msg); };
+
+    log('[Bear] Starting sync...');
+
+    const apiKey = process.env.GOOGLE_GEMINI_API_KEY;
+    if (!apiKey) {
+        log('[Bear] ERROR: GOOGLE_GEMINI_API_KEY not found');
+        return logs;
+    }
+
+    // 1. Fetch 'Daily Log' from Bear SQLite
+    let noteText = '';
+    try {
+        const db = new sqlite3.Database(BEAR_DB_PATH);
+        const get = promisify(db.get.bind(db));
+        const row = await get("SELECT ZTEXT FROM ZSFNOTE WHERE ZTITLE = 'Daily Log' AND ZTRASHED = 0 AND ZARCHIVED = 0 LIMIT 1") as { ZTEXT: string } | undefined;
+        db.close();
+
+        if (!row?.ZTEXT) {
+            log('[Bear] Note "Daily Log" not found');
+            return logs;
+        }
+        noteText = row.ZTEXT;
+    } catch (err: any) {
+        log(`[Bear] DB Error: ${err.message}`);
+        return logs;
+    }
+
+    log(`[Bear] Fetched note (len: ${noteText.length}). Parsing with Gemini...`);
+
+    // 2. Parse with Gemini
+    try {
+        const genAI = new GoogleGenerativeAI(apiKey);
+        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+
+        // Send full text, context window is large enough
+        const truncated = noteText;
+
+        const prompt = `
+            The note is structured with Year headers (e.g. "2026", "2025").
+            
+            INSTRUCTIONS:
+            1. Find the "2026" header.
+            2. Extract events STRICTLY from the bullet points under the "2026" header.
+            3. STOP processing immediately when you see the "2025" header (or any other year).
+            4. Do NOT extract events from the 2025 section.
+            
+            For each event found under 2026, provide:
+            - title: A short, concise title focusing on the accomplishment (e.g., "Ran 5k" instead of "I went for a run today"). Max 5-6 words.
+            - start_date: ISO date (YYYY-MM-DD). The year is 2026.
+            - end_date: ISO date (YYYY-MM-DD). Same as start_date if it's a single day.
+            - category: One of [deep_work, shallow_work, meeting, life, other].
+            
+            Return the result ONLY as a JSON array of objects. 
+            If no events are found under 2026, return exactly [].
+            
+            Text to parse (last part of note):
+            """${truncated}"""
+        `;
+
+        const result = await model.generateContent(prompt);
+        const response = result.response;
+        let text = response.text().trim();
+
+        // Clean markdown JSON if present
+        if (text.startsWith('```json')) text = text.replace('```json', '').replace('```', '').trim();
+        else if (text.startsWith('```')) text = text.replace('```', '').replace('```', '').trim();
+
+        const events = JSON.parse(text);
+        log(`[Bear] Gemini found ${events.length} events`);
+
+        if (events.length > 0) {
+            const supabase = await createClient();
+
+            // Get existing events to avoid duplicates
+            const { data: existing } = await supabase
+                .from('inbox_events')
+                .select('title, start_date')
+                .eq('status', 'pending');
+
+            const existingSet = new Set(existing?.map(e => `${e.title}|${e.start_date}`) || []);
+
+            const newEvents = events
+                .filter((e: any) => !existingSet.has(`${e.title}|${e.start_date}`))
+                .map((e: any) => ({
+                    title: e.title,
+                    start_date: e.start_date,
+                    end_date: e.end_date,
+                    category: e.category,
+                    status: 'pending',
+                    external_id: `bear_${Date.now()}_${e.title.slice(0, 10)}`
+                }));
+
+            if (newEvents.length > 0) {
+                const { error } = await supabase.from('inbox_events').insert(newEvents);
+                if (error) log(`[Bear] INSERT Error: ${error.message}`);
+                else log(`[Bear] Successfully inserted ${newEvents.length} events`);
+            } else {
+                log('[Bear] No new events to add (all duplicates)');
+            }
+        }
+    } catch (err: any) {
+        log(`[Bear] Gemini/Parse Error: ${err.message}`);
+    }
+
     return logs;
+}
+
+export async function seedInboxEvents(accessToken?: string) {
+    // Run both syncs in parallel
+    const [googleLogs, bearLogs] = await Promise.all([
+        syncGoogleCalendarEvents(accessToken),
+        syncBearNotes()
+    ]);
+
+    revalidatePath('/calendar');
+    return [...googleLogs, ...bearLogs];
 }
