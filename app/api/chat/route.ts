@@ -11,10 +11,20 @@ import {
 import { buildContext } from "@/lib/practice/ai";
 import type { ChatMessage } from "@/lib/practice/types";
 
-const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
+const GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
+const DEFAULT_MODELS = ["gemini-2.5-flash", "gemini-1.5-flash"];
 
 function getApiKey(): string | null {
   return process.env.GOOGLE_GEMINI_API_KEY || null;
+}
+
+function getModels(): string[] {
+  const raw = process.env.GEMINI_MODELS;
+  if (!raw) return DEFAULT_MODELS;
+  return raw
+    .split(",")
+    .map((model) => model.trim())
+    .filter(Boolean);
 }
 
 function buildBaselineContext(entries: Awaited<ReturnType<typeof getEntriesFromDb>>, goals: Awaited<ReturnType<typeof getGoals>>): string {
@@ -61,6 +71,8 @@ async function chatWithAssistant(
     return "AI chat is unavailable. Please set GOOGLE_GEMINI_API_KEY.";
   }
 
+  const models = getModels();
+
   const systemPrompt = `You are Baseline, a concise assistant. Use the provided context to answer questions.
 If the user asks for changes, respond with specific, actionable guidance. Keep answers short and practical.
 
@@ -78,29 +90,40 @@ CONTEXT:\n${context}`;
 
   contents.push({ role: "user", parts: [{ text: message }] });
 
-  try {
-    const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents,
-        generationConfig: { temperature: 0.6, maxOutputTokens: 400 },
-      }),
-    });
+  let lastStatus: number | null = null;
 
-    if (!response.ok) {
-      return `AI service error: ${response.status}. Please check your API key.`;
-    }
+  for (const model of models) {
+    try {
+      const response = await fetch(`${GEMINI_API_BASE}/${model}:generateContent?key=${apiKey}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents,
+          generationConfig: { temperature: 0.6, maxOutputTokens: 400 },
+        }),
+      });
 
-    const data = await response.json();
-    if (data.candidates?.[0]?.content?.parts?.[0]?.text) {
-      return data.candidates[0].content.parts[0].text;
+      if (response.ok) {
+        const data = await response.json();
+        if (data.candidates?.[0]?.content?.parts?.[0]?.text) {
+          return data.candidates[0].content.parts[0].text;
+        }
+        return "No response from AI. Please try again.";
+      }
+
+      lastStatus = response.status;
+      if (response.status === 401 || response.status === 403) {
+        return `AI service error: ${response.status}. Please check your API key.`;
+      }
+    } catch (error) {
+      console.error("AI chat error:", error);
     }
-    return "No response from AI. Please try again.";
-  } catch (error) {
-    console.error("AI chat error:", error);
-    return "AI error: Please try again.";
   }
+
+  if (lastStatus) {
+    return `AI service error: ${lastStatus}. Please check your API key or model availability.`;
+  }
+  return "AI error: Please try again.";
 }
 
 export async function POST(request: Request) {

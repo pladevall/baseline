@@ -12,10 +12,63 @@ import type {
     ChatMessage,
 } from './types';
 
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
+const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
+const DEFAULT_MODELS = ['gemini-2.5-flash', 'gemini-1.5-flash'];
 
 function getApiKey(): string | null {
     return process.env.GOOGLE_GEMINI_API_KEY || null;
+}
+
+function getModels(): string[] {
+    const raw = process.env.GEMINI_MODELS;
+    if (!raw) return DEFAULT_MODELS;
+    return raw
+        .split(',')
+        .map((model) => model.trim())
+        .filter(Boolean);
+}
+
+async function generateGeminiResponse(
+    contents: Array<{ role: string; parts: Array<{ text: string }> }>,
+    generationConfig: { temperature: number; maxOutputTokens: number }
+): Promise<string> {
+    const apiKey = getApiKey();
+    if (!apiKey) {
+        return 'AI coaching is not available. Please set GOOGLE_GEMINI_API_KEY.';
+    }
+
+    const models = getModels();
+    let lastStatus: number | null = null;
+
+    for (const model of models) {
+        try {
+            const response = await fetch(`${GEMINI_API_BASE}/${model}:generateContent?key=${apiKey}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ contents, generationConfig }),
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                if (data.candidates?.[0]?.content?.parts?.[0]?.text) {
+                    return data.candidates[0].content.parts[0].text;
+                }
+                return 'No response from AI. Please try again.';
+            }
+
+            lastStatus = response.status;
+            if (response.status === 401 || response.status === 403) {
+                return `AI service error: ${response.status}. Please check your API key.`;
+            }
+        } catch (error) {
+            console.error('AI chat error:', error);
+        }
+    }
+
+    if (lastStatus) {
+        return `AI service error: ${lastStatus}. Please check your API key or model availability.`;
+    }
+    return 'AI error: Please try again.';
 }
 
 // ============================================
@@ -131,11 +184,6 @@ export async function chatWithCoach(
     history: ChatMessage[],
     context: string
 ): Promise<string> {
-    const apiKey = getApiKey();
-    if (!apiKey) {
-        return 'AI coaching is not available. Please set GOOGLE_GEMINI_API_KEY.';
-    }
-
     const systemPrompt = getSystemPrompt(context);
 
     // Build conversation contents
@@ -165,32 +213,7 @@ export async function chatWithCoach(
         parts: [{ text: message }],
     });
 
-    try {
-        const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                contents,
-                generationConfig: {
-                    temperature: 0.7,
-                    maxOutputTokens: 500,
-                },
-            }),
-        });
-
-        if (!response.ok) {
-            return `AI service error: ${response.status}. Please check your API key.`;
-        }
-
-        const data = await response.json();
-        if (data.candidates?.[0]?.content?.parts?.[0]?.text) {
-            return data.candidates[0].content.parts[0].text;
-        }
-        return 'No response from AI. Please try again.';
-    } catch (error) {
-        console.error('AI chat error:', error);
-        return 'AI error: Please try again.';
-    }
+    return generateGeminiResponse(contents, { temperature: 0.7, maxOutputTokens: 500 });
 }
 
 // ============================================
@@ -201,11 +224,6 @@ export async function generateReflection(
     todayPractice: PracticeEntry,
     context: string
 ): Promise<string> {
-    const apiKey = getApiKey();
-    if (!apiKey) {
-        return 'AI coaching is not available. Please set GOOGLE_GEMINI_API_KEY.';
-    }
-
     const prompt = `Based on today's completed practice and the user's history, generate a brief, insightful reflection (2-3 sentences max).
 
 Focus on ONE of these:
@@ -227,31 +245,12 @@ TODAY'S COMPLETED PRACTICE:
 
 Generate the reflection:`;
 
-    try {
-        const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                contents: [{ role: 'user', parts: [{ text: prompt }] }],
-                generationConfig: {
-                    temperature: 0.7,
-                    maxOutputTokens: 150,
-                },
-            }),
-        });
+    const response = await generateGeminiResponse(
+        [{ role: 'user', parts: [{ text: prompt }] }],
+        { temperature: 0.7, maxOutputTokens: 150 }
+    );
 
-        if (!response.ok) {
-            return 'Could not generate reflection. AI service unavailable.';
-        }
-
-        const data = await response.json();
-        if (data.candidates?.[0]?.content?.parts?.[0]?.text) {
-            return data.candidates[0].content.parts[0].text;
-        }
-        return 'Could not generate reflection.';
-    } catch {
-        return 'Could not generate reflection.';
-    }
+    return response || 'Could not generate reflection.';
 }
 
 // ============================================
@@ -281,12 +280,6 @@ export async function generateFieldPrompt(
     context: string,
     currentFields: Record<string, string>
 ): Promise<string> {
-    const apiKey = getApiKey();
-    if (!apiKey) {
-        console.error('GOOGLE_GEMINI_API_KEY is missing');
-        throw new Error('AI configuration missing');
-    }
-
     const instruction = FIELD_INSTRUCTIONS[field] || 'Generate a helpful prompt.';
 
     const prompt = `Generate ONE short, specific question or prompt (max 20 words) to help the user with their ${field.replace(/_/g, ' ')}.
@@ -307,31 +300,10 @@ CURRENT VALUE FOR THIS FIELD: ${currentValue || '(empty)'}
 
 Generate the prompt (ONE sentence, be specific to their data):`;
 
-    try {
-        const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                contents: [{ role: 'user', parts: [{ text: prompt }] }],
-                generationConfig: {
-                    temperature: 0.8,
-                    maxOutputTokens: 60,
-                },
-            }),
-        });
+    const response = await generateGeminiResponse(
+        [{ role: 'user', parts: [{ text: prompt }] }],
+        { temperature: 0.8, maxOutputTokens: 60 }
+    );
 
-        if (!response.ok) {
-            console.error('Gemini API error:', response.status, response.statusText);
-            throw new Error(`AI service error: ${response.status}`);
-        }
-
-        const data = await response.json();
-        if (data.candidates?.[0]?.content?.parts?.[0]?.text) {
-            return data.candidates[0].content.parts[0].text.trim();
-        }
-        throw new Error('No content generated');
-    } catch (err) {
-        console.error('generateFieldPrompt error:', err);
-        throw err;
-    }
+    return response.trim();
 }

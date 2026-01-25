@@ -11,14 +11,16 @@
       "title": "Add Action",
       "description": "Create a new action",
       "mode": "view",
-      "path": "add-action.js"
+      "icon": "assets/baseline-icon.svg",
+      "path": "dist/add-action.js"
     },
     {
       "name": "add-belief",
       "title": "Add Belief",
       "description": "Create a new belief",
       "mode": "view",
-      "path": "add-belief.js"
+      "icon": "assets/baseline-icon.svg",
+      "path": "dist/add-belief.js"
     }
   ],
   "preferences": [
@@ -49,8 +51,8 @@
     "@raycast/utils": "^1.15.0"
   },
   "scripts": {
-    "build": "ray build",
-    "dev": "ray dev"
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsc -p tsconfig.json --watch"
   },
   "devDependencies": {
     "@types/node": "^22.10.7",
