@@ -991,7 +991,7 @@ export default function BetsTable({ bets, beliefs, boldTakes, userSettings, onRe
                                                 <select
                                                     value={bet.status}
                                                     onChange={(e) => handleUpdateBetStatus(bet.id, e.target.value as Bet['status'])}
-                                                    className="h-7 w-28 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 pr-7 text-xs text-gray-700 dark:text-gray-200 text-left"
+                                                    className="h-7 w-32 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 pr-7 text-xs text-gray-700 dark:text-gray-200 text-left"
                                                 >
                                                     <option value="active">Active</option>
                                                     <option value="paused">Paused</option>
@@ -1222,7 +1222,7 @@ export default function BetsTable({ bets, beliefs, boldTakes, userSettings, onRe
                                                                         <select
                                                                             value={belief.status}
                                                                             onChange={(e) => handleUpdateBeliefStatus(belief.id, e.target.value)}
-                                                                            className="h-7 w-28 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 pr-7 text-xs text-gray-700 dark:text-gray-200 text-left"
+                                                                            className="h-7 w-32 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 pr-7 text-xs text-gray-700 dark:text-gray-200 text-left"
                                                                         >
                                                                             <option value="untested">Untested</option>
                                                                             <option value="testing">Testing</option>
@@ -1375,7 +1375,7 @@ export default function BetsTable({ bets, beliefs, boldTakes, userSettings, onRe
                                                                         <select
                                                                             value={take.status}
                                                                             onChange={(e) => handleUpdateActionStatus(take.id, e.target.value)}
-                                                                            className="h-7 w-28 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 pr-7 text-xs text-gray-700 dark:text-gray-200 text-left"
+                                                                            className="h-7 w-32 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 pr-7 text-xs text-gray-700 dark:text-gray-200 text-left"
                                                                         >
                                                                             <option value="committed">Committed</option>
                                                                             <option value="done">Done</option>
@@ -1548,7 +1548,7 @@ export default function BetsTable({ bets, beliefs, boldTakes, userSettings, onRe
                                                             <select
                                                                 value={take.status}
                                                                 onChange={(e) => handleUpdateActionStatus(take.id, e.target.value)}
-                                                                className="h-7 w-28 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 pr-7 text-xs text-gray-700 dark:text-gray-200 text-left"
+                                                                className="h-7 w-32 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 pr-7 text-xs text-gray-700 dark:text-gray-200 text-left"
                                                             >
                                                                 <option value="committed">Committed</option>
                                                                 <option value="done">Done</option>

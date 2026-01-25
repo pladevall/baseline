@@ -40,8 +40,8 @@
     "@raycast/utils": "^1.15.0"
   },
   "scripts": {
-    "build": "raycast build",
-    "dev": "raycast dev"
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsc -p tsconfig.json --watch"
   },
   "devDependencies": {
     "@types/node": "^22.10.7",

@@ -1,6 +1,6 @@
+import React, { useMemo, useState } from "react";
 import { ActionPanel, Action, Form, showToast, Toast } from "@raycast/api";
 import { usePromise } from "@raycast/utils";
-import { useMemo, useState } from "react";
 import { apiFetch } from "./lib/api";
 import type { Bet, Belief } from "./lib/types";
 
@@ -95,8 +95,10 @@ export default function AddAction() {
         title="Bet"
         value={selectedBelief?.bet_id ?? betId}
         isLoading={betsLoading}
-        onChange={setBetId}
-        isDisabled={!canEditBet}
+        onChange={(next) => {
+          if (!canEditBet) return;
+          setBetId(next);
+        }}
       >
         <Form.Dropdown.Item value="" title="No bet" />
         {bets?.map((bet) => (

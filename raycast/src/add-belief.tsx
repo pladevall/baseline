@@ -1,6 +1,6 @@
+import React, { useState } from "react";
 import { ActionPanel, Action, Form, showToast, Toast } from "@raycast/api";
 import { usePromise } from "@raycast/utils";
-import { useState } from "react";
 import { apiFetch } from "./lib/api";
 import type { Bet } from "./lib/types";
 
