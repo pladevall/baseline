@@ -4,8 +4,7 @@
  */
 
 import type { Bet, Belief, BoldTake } from './types';
-import { UPSIDE_OPTIONS } from './types';
-import { getEffectiveConfidence, calculateAutoUpside, calculateBetTimeline } from './bet-calculations';
+import { getEffectiveConfidence, calculateBetTimeline } from './bet-calculations';
 
 /**
  * Parse timeline string to approximate years
@@ -55,8 +54,7 @@ export function parseTimelineYears(timeline?: string | null): number {
  * - Higher confidence = higher score
  * - Longer timeline = lower score (discount for time)
  *
- * Note: If no manual upside_multiplier is set, uses auto-calculated upside
- * based on timeline and confidence.
+ * Note: Requires a manual upside_multiplier; otherwise score is 0.
  */
 export function calculateBetScore(
     bet: Bet,
@@ -67,21 +65,7 @@ export function calculateBetScore(
     const confidence = getEffectiveConfidence(bet);
 
     // Get upside multiplier (manual or auto-calculated)
-    let multiplier = bet.upside_multiplier;
-    if (!multiplier) {
-        // If no manual upside, calculate from timeline + confidence
-        let timelineYears = parseTimelineYears(bet.timeline);
-
-        // If we have linked actions, calculate timeline from them
-        if (linkedTakes && linkedTakes.length > 0) {
-            timelineYears = calculateBetTimeline(linkedBeliefs ?? [], linkedTakes);
-        }
-
-        multiplier = calculateAutoUpside(timelineYears, confidence);
-    } else if (multiplier <= 0) {
-        // Avoid zero or negative manual values
-        multiplier = 1;
-    }
+    const multiplier = bet.upside_multiplier ?? 0;
 
     // Parse timeline
     let timelineYears = parseTimelineYears(bet.timeline);
@@ -93,6 +77,8 @@ export function calculateBetScore(
     if (timelineYears <= 0) timelineYears = 1;
 
     // Score formula: (upside × confidence/100) / timeline
+    if (multiplier <= 0) return 0;
+
     const score = (multiplier * (confidence / 100)) / timelineYears;
 
     return Math.round(score * 100) / 100; // Round to 2 decimals

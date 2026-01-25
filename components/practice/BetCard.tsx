@@ -32,7 +32,7 @@ export default function BetCard({
     const [showLinkMenu, setShowLinkMenu] = useState<'belief' | 'action' | null>(null);
 
 
-    // Confidence color (0-100 scale: Red < 50, Yellow 50-80, Green >= 80)
+    const hasConfidenceData = beliefs.length > 0 || boldTakes.length > 0;
     const confidenceColor = bet.confidence >= 80 ? 'text-green-500' :
         bet.confidence >= 50 ? 'text-yellow-500' : 'text-red-500';
 
@@ -102,11 +102,17 @@ export default function BetCard({
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4">
                     <div>
                         <label className="text-xs font-medium text-gray-500 uppercase">Upside</label>
-                        <div className="font-semibold text-gray-900 dark:text-gray-100">{bet.upside}</div>
+                        <div className="font-semibold text-gray-900 dark:text-gray-100">
+                            {bet.upside_multiplier !== null && bet.upside_multiplier !== undefined
+                                ? `${bet.upside_multiplier}x`
+                                : '-'}
+                        </div>
                     </div>
                     <div>
                         <label className="text-xs font-medium text-gray-500 uppercase">Confidence</label>
-                        <div className={`font-semibold ${confidenceColor}`}>{bet.confidence}%</div>
+                        <div className={`font-semibold ${hasConfidenceData ? confidenceColor : 'text-gray-400'}`}>
+                            {hasConfidenceData ? `${bet.confidence}%` : '-'}
+                        </div>
                     </div>
                     <div>
                         <label className="text-xs font-medium text-gray-500 uppercase">Timeline</label>

@@ -5,7 +5,7 @@ import type { Bet, Belief, BoldTake, UserSettings } from '@/lib/practice/types';
 import { UPSIDE_OPTIONS } from '@/lib/practice/types';
 import { calculateBetScore, parseTimelineYears } from '@/lib/practice/bet-scoring';
 import { formatDownside, formatCurrency } from '@/lib/practice/formatting';
-import { getEffectiveConfidence, isComputedConfidence, calculateExpectedValue, calculateBetTimeline, calculateAutoUpside, calculateBeliefDuration } from '@/lib/practice/bet-calculations';
+import { getEffectiveConfidence, isComputedConfidence, calculateExpectedValue, calculateBetTimeline, calculateBeliefDuration } from '@/lib/practice/bet-calculations';
 import BetForm from './BetForm';
 import Tooltip from '@/components/Tooltip';
 
@@ -124,17 +124,12 @@ export default function BetsTable({ bets, beliefs, boldTakes, userSettings, onRe
         setEditValue(value);
     };
 
-    const handleSaveInlineEdit = useCallback(async (betId: string, field: string, clearValue: boolean = false) => {
+    const handleSaveInlineEdit = useCallback(async (betId: string, field: string) => {
         const trimmedValue = editValue.trim();
-        if (!trimmedValue && !clearValue) {
-            setEditingField(null);
-            return;
-        }
 
         const updates: Partial<Bet> = {};
         if (field === 'upside_multiplier') {
-            if (clearValue) {
-                // Clear to use auto-calculation
+            if (!trimmedValue) {
                 updates.upside_multiplier = null;
             } else {
                 updates.upside_multiplier = parseFloat(trimmedValue);
@@ -555,12 +550,30 @@ export default function BetsTable({ bets, beliefs, boldTakes, userSettings, onRe
                         <tbody>
                             {sortedBets.map((bet) => {
                                 const isExpanded = expandedBets.has(bet.id);
-                                const linkedBeliefs = beliefs.filter(b => b.bet_id === bet.id);
-                                const linkedTakes = boldTakes.filter(t => t.bet_id === bet.id);
+                                const linkedBeliefs = beliefs
+                                    .filter(b => b.bet_id === bet.id)
+                                    .sort((a, b) => {
+                                        const aTime = a.created_at ? Date.parse(a.created_at) : 0;
+                                        const bTime = b.created_at ? Date.parse(b.created_at) : 0;
+                                        if (aTime !== bTime) return bTime - aTime;
+                                        return a.id.localeCompare(b.id);
+                                    });
+                                const linkedTakes = boldTakes
+                                    .filter(t => t.bet_id === bet.id)
+                                    .sort((a, b) => {
+                                        const aDate = a.date ? Date.parse(a.date) : 0;
+                                        const bDate = b.date ? Date.parse(b.date) : 0;
+                                        if (aDate !== bDate) return bDate - aDate;
+                                        const aTime = a.created_at ? Date.parse(a.created_at) : 0;
+                                        const bTime = b.created_at ? Date.parse(b.created_at) : 0;
+                                        if (aTime !== bTime) return bTime - aTime;
+                                        return a.id.localeCompare(b.id);
+                                    });
                                 const showBeliefs = detailFilter !== 'actions';
                                 const showActions = detailFilter !== 'beliefs';
                                 const hasBeliefs = linkedBeliefs.length > 0;
                                 const hasActions = linkedTakes.length > 0;
+                                const hasConfidenceData = hasBeliefs || hasActions;
                                 const showEmptyState = detailFilter === 'all'
                                     ? !hasBeliefs && !hasActions
                                     : detailFilter === 'beliefs'
@@ -574,11 +587,12 @@ export default function BetsTable({ bets, beliefs, boldTakes, userSettings, onRe
                                 const calculatedDownside = timelineYears * (userSettings?.annual_salary ?? 150000);
 
                                 // Calculate upside multiplier (auto or manual)
-                                const autoUpside = calculateAutoUpside(timelineYears, effectiveConfidence);
-                                const displayUpside = bet.upside_multiplier || autoUpside;
+                                const displayUpside = bet.upside_multiplier ?? null;
 
                                 // Calculate expected value: downside × upside_multiplier
-                                const expectedValue = calculateExpectedValue(displayUpside, calculatedDownside);
+                                const expectedValue = displayUpside !== null
+                                    ? calculateExpectedValue(displayUpside, calculatedDownside)
+                                    : null;
 
                                 return (
                                     <React.Fragment key={bet.id}>
@@ -651,31 +665,35 @@ export default function BetsTable({ bets, beliefs, boldTakes, userSettings, onRe
                                                 })()}
                                             </td>
                                             {/* Confidence */}
-                                            <td className={`px-5 py-3 text-center text-xs font-medium tabular-nums ${getConfidenceColor(effectiveConfidence)}`}>
-                                                <Tooltip content={
-                                                    <div className="space-y-1">
-                                                        <div className="font-semibold text-white">Confidence Assessment:</div>
-                                                        {isComputedConfidence(bet) ? (
-                                                            <>
-                                                                <div className="text-xs font-mono">{effectiveConfidence}% (auto-calculated)</div>
-                                                                <div className="text-xs text-gray-300">Weighted average from {linkedBeliefs.length + linkedTakes.length} beliefs/actions</div>
-                                                            </>
-                                                        ) : (
-                                                            <>
-                                                                <div className="text-xs font-mono">{effectiveConfidence}% (manual)</div>
-                                                                <div className="text-xs text-gray-300">Set manually, no beliefs/actions yet</div>
-                                                            </>
-                                                        )}
-                                                        <div className="border-t border-gray-600 pt-1 mt-1">
-                                                            <div className="text-xs text-gray-300">Based on available evidence and conviction</div>
+                                            <td className={`px-5 py-3 text-center text-xs font-medium tabular-nums ${hasConfidenceData ? getConfidenceColor(effectiveConfidence) : 'text-gray-400'}`}>
+                                                {hasConfidenceData ? (
+                                                    <Tooltip content={
+                                                        <div className="space-y-1">
+                                                            <div className="font-semibold text-white">Confidence Assessment:</div>
+                                                            {isComputedConfidence(bet) ? (
+                                                                <>
+                                                                    <div className="text-xs font-mono">{effectiveConfidence}% (auto-calculated)</div>
+                                                                    <div className="text-xs text-gray-300">Weighted average from {linkedBeliefs.length + linkedTakes.length} beliefs/actions</div>
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    <div className="text-xs font-mono">{effectiveConfidence}% (manual)</div>
+                                                                    <div className="text-xs text-gray-300">Set manually</div>
+                                                                </>
+                                                            )}
+                                                            <div className="border-t border-gray-600 pt-1 mt-1">
+                                                                <div className="text-xs text-gray-300">Based on available evidence and conviction</div>
+                                                            </div>
                                                         </div>
-                                                    </div>
-                                                }>
-                                                    <span className="cursor-help">
-                                                        {effectiveConfidence}%
-                                                        {isComputedConfidence(bet) && <span className="text-[8px] ml-0.5">◆</span>}
-                                                    </span>
-                                                </Tooltip>
+                                                    }>
+                                                        <span className="cursor-help">
+                                                            {effectiveConfidence}%
+                                                            {isComputedConfidence(bet) && <span className="text-[8px] ml-0.5">◆</span>}
+                                                        </span>
+                                                    </Tooltip>
+                                                ) : (
+                                                    <span>-</span>
+                                                )}
                                             </td>
                                             {/* Upside - Inline Editable with Rich Tooltip */}
                                             <td
@@ -683,10 +701,7 @@ export default function BetsTable({ bets, beliefs, boldTakes, userSettings, onRe
                                                 onClick={(e) => e.stopPropagation()}
                                             >
                                                 {(() => {
-                                                    const autoUpside = calculateAutoUpside(timelineYears, effectiveConfidence);
-                                                    const displayUpside = bet.upside_multiplier || autoUpside;
-                                                    const isAutoCalculated = !bet.upside_multiplier;
-                                                    const showDifference = bet.upside_multiplier && Math.abs(bet.upside_multiplier - autoUpside) > 0.1;
+                                                    const displayUpside = bet.upside_multiplier ?? null;
 
                                                     return (
                                                         <Tooltip content={
@@ -695,36 +710,13 @@ export default function BetsTable({ bets, beliefs, boldTakes, userSettings, onRe
 
                                                                 {/* Current/Display Value */}
                                                                 <div className="text-xs space-y-0.5">
-                                                                    <div className="font-mono">{displayUpside}x return if successful</div>
-                                                                    <div className="text-gray-300 mt-1">For every $1 invested, expect ${displayUpside} back if bet succeeds</div>
-                                                                </div>
-
-                                                                {/* Auto-calculated value comparison */}
-                                                                <div className="border-t border-gray-600 pt-2 mt-2">
-                                                                    <div className="font-semibold text-white text-xs mb-1">Auto-Calculated Value:</div>
-                                                                    <div className="text-xs space-y-1">
-                                                                        <div className="text-blue-400 font-mono">{autoUpside}x</div>
-                                                                        <div className="text-[10px] text-gray-400">
-                                                                            Formula: 5 × ({100}/{effectiveConfidence})^0.5 × {timelineYears.toFixed(2)}^0.3
-                                                                        </div>
-                                                                        {showDifference && bet.upside_multiplier && (
-                                                                            <div className="text-[10px] text-amber-300 mt-1">
-                                                                                {bet.upside_multiplier > autoUpside ? '↑' : '↓'} {Math.abs((bet.upside_multiplier - autoUpside) / autoUpside * 100).toFixed(0)}% different from auto
-                                                                            </div>
-                                                                        )}
-                                                                    </div>
-                                                                </div>
-
-                                                                {/* Status */}
-                                                                <div className="border-t border-gray-600 pt-2">
-                                                                    {isAutoCalculated ? (
-                                                                        <div className="text-[10px] text-blue-400">
-                                                                            💙 Using auto-calculated value
-                                                                        </div>
+                                                                    {displayUpside !== null ? (
+                                                                        <>
+                                                                            <div className="font-mono">{displayUpside}x return if successful</div>
+                                                                            <div className="text-gray-300 mt-1">For every $1 invested, expect ${displayUpside} back if bet succeeds</div>
+                                                                        </>
                                                                     ) : (
-                                                                        <div className="text-[10px] text-indigo-400">
-                                                                            ✎ Manually set - click to use auto-upside
-                                                                        </div>
+                                                                        <div className="text-gray-300">Set a multiplier to model expected returns.</div>
                                                                     )}
                                                                 </div>
                                                             </div>
@@ -745,25 +737,12 @@ export default function BetsTable({ bets, beliefs, boldTakes, userSettings, onRe
                                                             ) : (
                                                                 <div className="flex items-center justify-center gap-1">
                                                                     <button
-                                                                        onClick={() => handleStartEdit(bet.id, 'upside_multiplier', String(displayUpside))}
-                                                                        className={`hover:bg-gray-100 dark:hover:bg-gray-800 px-2 py-1 rounded text-xs font-mono cursor-help ${
-                                                                            isAutoCalculated
-                                                                                ? 'text-blue-600 dark:text-blue-400'
-                                                                                : 'text-indigo-600 dark:text-indigo-400'
-                                                                        }`}
-                                                                        title={isAutoCalculated ? 'Click to manually set upside' : 'Click to edit'}
+                                                                        onClick={() => handleStartEdit(bet.id, 'upside_multiplier', displayUpside !== null ? String(displayUpside) : '')}
+                                                                        className="hover:bg-gray-100 dark:hover:bg-gray-800 px-2 py-1 rounded text-xs font-mono text-indigo-600 dark:text-indigo-400 cursor-help"
+                                                                        title="Click to set upside multiplier"
                                                                     >
-                                                                        {displayUpside}x {isAutoCalculated && <span className="text-[8px]">◆</span>}
+                                                                        {displayUpside !== null ? `${displayUpside}x` : '-'}
                                                                     </button>
-                                                                    {!isAutoCalculated && (
-                                                                        <button
-                                                                            onClick={() => handleSaveInlineEdit(bet.id, 'upside_multiplier', true)}
-                                                                            className="text-[10px] px-1.5 py-0.5 rounded text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 border border-blue-200 dark:border-blue-800"
-                                                                            title="Apply auto-calculated value"
-                                                                        >
-                                                                            🔄
-                                                                        </button>
-                                                                    )}
                                                                 </div>
                                                             )}
                                                         </Tooltip>
@@ -771,14 +750,18 @@ export default function BetsTable({ bets, beliefs, boldTakes, userSettings, onRe
                                                 })()}
                                             </td>
                                             {/* Expected Value Column (NEW) */}
-                                            <td className="px-5 py-3 text-center text-xs text-green-600 dark:text-green-400 font-medium">
+                                            <td className={`px-5 py-3 text-center text-xs font-medium ${expectedValue !== null ? 'text-green-600 dark:text-green-400' : 'text-gray-400'}`}>
                                                 <Tooltip content={
                                                     <div className="space-y-1">
                                                         <div className="font-semibold text-white">Expected Value:</div>
-                                                        <div className="text-xs font-mono space-y-0.5">
-                                                            <div>{formatCurrency(calculatedDownside)} × {displayUpside}x</div>
-                                                            <div className="border-t border-gray-600 pt-0.5 mt-0.5">= {formatCurrency(expectedValue || 0)}</div>
-                                                        </div>
+                                                        {displayUpside !== null ? (
+                                                            <div className="text-xs font-mono space-y-0.5">
+                                                                <div>{formatCurrency(calculatedDownside)} × {displayUpside}x</div>
+                                                                <div className="border-t border-gray-600 pt-0.5 mt-0.5">= {formatCurrency(expectedValue || 0)}</div>
+                                                            </div>
+                                                        ) : (
+                                                            <div className="text-xs text-gray-300">Set an upside multiplier to calculate expected value.</div>
+                                                        )}
                                                         {timelineYears > 0 && (
                                                             <div className="text-xs text-gray-300 mt-1">
                                                                 Downside: {timelineYears.toFixed(2)} yrs × ${userSettings?.annual_salary.toLocaleString() ?? '150,000'}
@@ -787,7 +770,9 @@ export default function BetsTable({ bets, beliefs, boldTakes, userSettings, onRe
                                                         <div className="text-xs text-gray-300 mt-1">Potential monetary outcome if bet succeeds</div>
                                                     </div>
                                                 }>
-                                                    <span className="cursor-help">{formatCurrency(expectedValue || 0)}</span>
+                                                    <span className="cursor-help">
+                                                        {expectedValue !== null ? formatCurrency(expectedValue || 0) : '-'}
+                                                    </span>
                                                 </Tooltip>
                                             </td>
                                             {/* Downside - Read-Only with Rich Tooltip */}
@@ -972,31 +957,31 @@ export default function BetsTable({ bets, beliefs, boldTakes, userSettings, onRe
                                                                     <td className="px-6 py-2">
                                                                         <div className="flex items-center gap-2 pl-10">
                                                                             <span className="text-[10px] px-1.5 py-0.5 bg-green-200 dark:bg-green-700 rounded font-medium">A</span>
-                                                                            <div className="min-w-0">
-                                                                                {editingField?.betId === take.id && editingField?.field === `action-description-${take.id}` ? (
-                                                                                    <input
-                                                                                        autoFocus
-                                                                                        value={editValue}
-                                                                                        onChange={(e) => setEditValue(e.target.value)}
-                                                                                        onBlur={() => handleUpdateActionDescription(take.id, editValue)}
-                                                                                        onKeyDown={(e) => {
-                                                                                            if (e.key === 'Enter') handleUpdateActionDescription(take.id, editValue);
-                                                                                            if (e.key === 'Escape') setEditingField(null);
-                                                                                        }}
-                                                                                        className="w-full min-w-[220px] px-2 py-0.5 text-xs border border-green-300 dark:border-green-700 rounded bg-white dark:bg-gray-900"
-                                                                                    />
-                                                                                ) : (
-                                                                                    <button
-                                                                                        onClick={(e) => {
-                                                                                            e.stopPropagation();
-                                                                                            handleStartEdit(take.id, `action-description-${take.id}`, take.description);
-                                                                                        }}
-                                                                                        className="text-left text-xs text-gray-900 dark:text-gray-100 hover:text-green-600 dark:hover:text-green-300"
-                                                                                    >
-                                                                                        {take.description}
-                                                                                    </button>
-                                                                                )}
-                                                                            </div>
+                                                                        <div className="min-w-0 flex-1">
+                                                                            {editingField?.betId === take.id && editingField?.field === `action-description-${take.id}` ? (
+                                                                                <input
+                                                                                    autoFocus
+                                                                                    value={editValue}
+                                                                                    onChange={(e) => setEditValue(e.target.value)}
+                                                                                    onBlur={() => handleUpdateActionDescription(take.id, editValue)}
+                                                                                    onKeyDown={(e) => {
+                                                                                        if (e.key === 'Enter') handleUpdateActionDescription(take.id, editValue);
+                                                                                        if (e.key === 'Escape') setEditingField(null);
+                                                                                    }}
+                                                                                    className="w-full px-2 py-0.5 text-xs border border-green-300 dark:border-green-700 rounded bg-white dark:bg-gray-900"
+                                                                                />
+                                                                            ) : (
+                                                                                <button
+                                                                                    onClick={(e) => {
+                                                                                        e.stopPropagation();
+                                                                                        handleStartEdit(take.id, `action-description-${take.id}`, take.description);
+                                                                                    }}
+                                                                                    className="w-full text-left text-xs text-gray-900 dark:text-gray-100 hover:text-green-600 dark:hover:text-green-300"
+                                                                                >
+                                                                                    {take.description}
+                                                                                </button>
+                                                                            )}
+                                                                        </div>
                                                                         </div>
                                                                     </td>
                                                                     <td className="px-5 py-2 text-center" onClick={(e) => e.stopPropagation()}>
@@ -1128,29 +1113,31 @@ export default function BetsTable({ bets, beliefs, boldTakes, userSettings, onRe
                                                         <td className="px-4 py-1">
                                                             <div className="flex items-center gap-2 pl-5">
                                                                 <span className="text-[10px] px-1.5 py-0.5 bg-green-200 dark:bg-green-700 rounded font-medium">A</span>
-                                                                {editingField?.betId === take.id && editingField?.field === `action-description-${take.id}` ? (
-                                                                    <input
-                                                                        autoFocus
-                                                                        value={editValue}
-                                                                        onChange={(e) => setEditValue(e.target.value)}
-                                                                        onBlur={() => handleUpdateActionDescription(take.id, editValue)}
-                                                                        onKeyDown={(e) => {
-                                                                            if (e.key === 'Enter') handleUpdateActionDescription(take.id, editValue);
-                                                                            if (e.key === 'Escape') setEditingField(null);
-                                                                        }}
-                                                                        className="w-full min-w-[220px] px-2 py-0.5 text-xs border border-green-300 dark:border-green-700 rounded bg-white dark:bg-gray-900"
-                                                                    />
-                                                                ) : (
-                                                                    <button
-                                                                        onClick={(e) => {
-                                                                            e.stopPropagation();
-                                                                            handleStartEdit(take.id, `action-description-${take.id}`, take.description);
-                                                                        }}
-                                                                        className="text-left text-xs text-gray-900 dark:text-gray-100 hover:text-green-600 dark:hover:text-green-300"
-                                                                    >
-                                                                        {take.description}
-                                                                    </button>
-                                                                )}
+                                                                <div className="min-w-0 flex-1">
+                                                                    {editingField?.betId === take.id && editingField?.field === `action-description-${take.id}` ? (
+                                                                        <input
+                                                                            autoFocus
+                                                                            value={editValue}
+                                                                            onChange={(e) => setEditValue(e.target.value)}
+                                                                            onBlur={() => handleUpdateActionDescription(take.id, editValue)}
+                                                                            onKeyDown={(e) => {
+                                                                                if (e.key === 'Enter') handleUpdateActionDescription(take.id, editValue);
+                                                                                if (e.key === 'Escape') setEditingField(null);
+                                                                            }}
+                                                                            className="w-full px-2 py-0.5 text-xs border border-green-300 dark:border-green-700 rounded bg-white dark:bg-gray-900"
+                                                                        />
+                                                                    ) : (
+                                                                        <button
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation();
+                                                                                handleStartEdit(take.id, `action-description-${take.id}`, take.description);
+                                                                            }}
+                                                                            className="w-full text-left text-xs text-gray-900 dark:text-gray-100 hover:text-green-600 dark:hover:text-green-300"
+                                                                        >
+                                                                            {take.description}
+                                                                        </button>
+                                                                    )}
+                                                                </div>
                                                             </div>
                                                         </td>
                                                         <td className="px-5 py-2 text-center" onClick={(e) => e.stopPropagation()}>
