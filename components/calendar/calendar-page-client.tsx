@@ -8,6 +8,7 @@ import { YearGrid } from './year-grid';
 import { EventModal } from './event-modal';
 import { InboxPopover } from './inbox-popover';
 import ThemeToggle from '@/components/ThemeToggle';
+import ChatToggleButton from '@/components/ChatToggleButton';
 import { CalendarEvent } from '@/types/calendar';
 import { Plus, Home, Maximize2, Minimize2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -65,6 +66,7 @@ function CalendarPageContent({ }: CalendarPageContentProps) {
                     >
                         {isWideMode ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
                     </button>
+                    <ChatToggleButton />
                     <ThemeToggle />
                     <span className="h-5 w-px bg-gray-200 dark:bg-gray-700/60" aria-hidden="true" />
                     <Link

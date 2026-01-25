@@ -6,7 +6,7 @@ function getPreferences() {
     return (0, api_1.getPreferenceValues)();
 }
 async function apiFetch(path, init) {
-    const { apiUrl, apiToken } = getPreferences();
+    const { apiUrl, apiToken, vercelBypassToken } = getPreferences();
     const headers = {
         "Content-Type": "application/json",
         ...init === null || init === void 0 ? void 0 : init.headers,
@@ -14,7 +14,15 @@ async function apiFetch(path, init) {
     if (apiToken) {
         headers.Authorization = `Bearer ${apiToken}`;
     }
-    const res = await fetch(`${apiUrl}${path}`, {
+    if (vercelBypassToken) {
+        headers["x-vercel-protection-bypass"] = vercelBypassToken;
+    }
+    const url = new URL(`${apiUrl}${path}`);
+    if (vercelBypassToken) {
+        url.searchParams.set("x-vercel-set-bypass-cookie", "true");
+        url.searchParams.set("x-vercel-protection-bypass", vercelBypassToken);
+    }
+    const res = await fetch(url.toString(), {
         ...init,
         headers,
     });

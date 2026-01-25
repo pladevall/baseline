@@ -4,6 +4,7 @@
 /node_modules
 /raycast/node_modules
 /raycast/raycast-env.d.ts
+/raycast/.raycast-build
 /.pnp
 .pnp.*
 .yarn/*

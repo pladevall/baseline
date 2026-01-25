@@ -5,15 +5,14 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { usePracticeData } from '@/lib/use-practice-data';
 import ThemeToggle from '@/components/ThemeToggle';
+import ChatToggleButton from '@/components/ChatToggleButton';
 import DailyPracticeForm from '@/components/practice/DailyPracticeForm';
 import BetsTable from '@/components/practice/BetsTable';
-import AICoachPanel from '@/components/practice/AICoachPanel';
 import type { PracticeEntry, BeliefStatus, BoldTakeStatus } from '@/lib/practice/types';
 
 export default function ActionsPage() {
     const router = useRouter();
     const { data, isLoading, refresh } = usePracticeData();
-    const [coachOpen, setCoachOpen] = useState(false);
     const [isPracticeModalOpen, setIsPracticeModalOpen] = useState(false);
 
     // Desktop guard - redirect mobile users
@@ -146,6 +145,7 @@ export default function ActionsPage() {
                         </div>
                     </div>
                     <div className="flex items-center gap-2">
+                        <ChatToggleButton />
                         <ThemeToggle />
                         <span className="h-5 w-px bg-gray-200 dark:bg-gray-700/60" aria-hidden="true" />
                         <Link
@@ -222,11 +222,6 @@ export default function ActionsPage() {
                 </div>
             )}
 
-            {/* AI Coach Panel */}
-            <AICoachPanel
-                isOpen={coachOpen}
-                onToggle={() => setCoachOpen(!coachOpen)}
-            />
         </div>
     );
 }

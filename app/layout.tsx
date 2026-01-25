@@ -5,6 +5,7 @@ import { ServiceWorkerRegistration } from "@/components/ServiceWorkerRegistratio
 import KeyboardShortcuts from "@/components/KeyboardShortcuts";
 import { AgentationWrapper } from "@/components/AgentationWrapper";
 import QuickAddBar from "@/components/QuickAddBar";
+import ChatProvider from "@/components/ChatProvider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -51,11 +52,13 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        {children}
-        <ServiceWorkerRegistration />
-        <KeyboardShortcuts />
-        <QuickAddBar />
-        <AgentationWrapper />
+        <ChatProvider>
+          {children}
+          <ServiceWorkerRegistration />
+          <KeyboardShortcuts />
+          <QuickAddBar />
+          <AgentationWrapper />
+        </ChatProvider>
       </body>
     </html>
   );

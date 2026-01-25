@@ -11,14 +11,14 @@
       "title": "Add Action",
       "description": "Create a new action",
       "mode": "view",
-      "path": "dist/add-action.js"
+      "path": "add-action.js"
     },
     {
       "name": "add-belief",
       "title": "Add Belief",
       "description": "Create a new belief",
       "mode": "view",
-      "path": "dist/add-belief.js"
+      "path": "add-belief.js"
     }
   ],
   "preferences": [
@@ -35,6 +35,13 @@
       "title": "API Token (optional)",
       "description": "Optional bearer token if your API requires auth",
       "required": false
+    },
+    {
+      "name": "vercelBypassToken",
+      "type": "password",
+      "title": "Vercel Bypass Token (optional)",
+      "description": "Bypass Vercel deployment protection for API requests",
+      "required": false
     }
   ],
   "dependencies": {
@@ -42,8 +49,8 @@
     "@raycast/utils": "^1.15.0"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "dev": "tsc -p tsconfig.json --watch"
+    "build": "ray build",
+    "dev": "ray dev"
   },
   "devDependencies": {
     "@types/node": "^22.10.7",

@@ -13,6 +13,7 @@ import { BIAEntry, BodyspecScan, RunningActivity, LiftingWorkout, SleepEntry, Co
 import { parsePDFFile } from '@/lib/client-pdf-parser';
 import { ValidationIssue } from '@/lib/pdf-parser';
 import ThemeToggle from '@/components/ThemeToggle';
+import ChatToggleButton from '@/components/ChatToggleButton';
 import { getEntriesFromDb, saveEntryToDb, deleteEntryFromDb, migrateFromLocalStorage, getPendingImages, deletePendingImage, saveOcrDebug, getGoals, saveGoal, deleteGoal, Goal } from '@/lib/supabase';
 import { correlateMeasurements } from '@/lib/correlation-utils';
 import { generateVolumeEfficiencyInsights, generateBalanceInsights, generatePeriodizationInsights } from '@/lib/correlation-insights';
@@ -573,6 +574,7 @@ export default function Home() {
             </p>
           </div>
           <div className="flex items-center gap-2">
+            <ChatToggleButton />
             <ThemeToggle />
             <span className="h-5 w-px bg-gray-200 dark:bg-gray-700/60" aria-hidden="true" />
             <Link
