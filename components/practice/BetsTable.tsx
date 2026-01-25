@@ -1033,17 +1033,7 @@ export default function BetsTable({ bets, beliefs, boldTakes, userSettings, onRe
                                                     );
                                                 })()}
                                             </td>
-                                            <td className="px-5 py-3 text-right" onClick={(e) => e.stopPropagation()}>
-                                                <button
-                                                    onClick={() => setEditingBet(bet)}
-                                                    className="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded transition-colors"
-                                                    title="Edit bet"
-                                                >
-                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                                    </svg>
-                                                </button>
-                                            </td>
+                                            <td className="px-5 py-3 text-right" onClick={(e) => e.stopPropagation()}></td>
                                                 </>
                                             )}
                                         </SortableRow>
@@ -1157,33 +1147,16 @@ export default function BetsTable({ bets, beliefs, boldTakes, userSettings, onRe
                                                                         )}
                                                                     </td>
                                                                     <td className="px-5 py-2 text-center" onClick={(e) => e.stopPropagation()}>
-                                                                        <Tooltip content={
-                                                                            <div className="space-y-2 max-w-xs">
-                                                                                <div className="font-semibold text-white">Belief Status: {belief.status}</div>
-                                                                                <div className="text-xs text-gray-200">
-                                                                                    {BELIEF_STATUS_GUIDANCE[belief.status as keyof typeof BELIEF_STATUS_GUIDANCE]?.description || 'Unknown status'}
-                                                                                </div>
-                                                                                <div className="text-[10px] text-gray-300 border-t border-gray-600 pt-1 mt-1">
-                                                                                    <div className="font-medium">When to use:</div>
-                                                                                    <div>{BELIEF_STATUS_GUIDANCE[belief.status as keyof typeof BELIEF_STATUS_GUIDANCE]?.when || ''}</div>
-                                                                                </div>
-                                                                                <div className="text-[10px] text-gray-300">
-                                                                                    <div className="font-medium">Next step:</div>
-                                                                                    <div>{BELIEF_STATUS_GUIDANCE[belief.status as keyof typeof BELIEF_STATUS_GUIDANCE]?.next || ''}</div>
-                                                                                </div>
-                                                                            </div>
-                                                                        }>
-                                                                            <select
-                                                                                value={belief.status}
-                                                                                onChange={(e) => handleUpdateBeliefStatus(belief.id, e.target.value)}
-                                                                                className="h-7 w-28 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 pr-7 text-xs text-gray-700 dark:text-gray-200 cursor-help text-left"
-                                                                            >
-                                                                                <option value="untested">Untested</option>
-                                                                                <option value="testing">Testing</option>
-                                                                                <option value="proven">Proven</option>
-                                                                                <option value="disproven">Disproven</option>
-                                                                            </select>
-                                                                        </Tooltip>
+                                                                        <select
+                                                                            value={belief.status}
+                                                                            onChange={(e) => handleUpdateBeliefStatus(belief.id, e.target.value)}
+                                                                            className="h-7 w-28 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 pr-7 text-xs text-gray-700 dark:text-gray-200 text-left"
+                                                                        >
+                                                                            <option value="untested">Untested</option>
+                                                                            <option value="testing">Testing</option>
+                                                                            <option value="proven">Proven</option>
+                                                                            <option value="disproven">Disproven</option>
+                                                                        </select>
                                                                     </td>
                                                                     <td className="px-5 py-2"></td>
                                                                     <td className="px-5 py-2"></td>
@@ -1327,32 +1300,15 @@ export default function BetsTable({ bets, beliefs, boldTakes, userSettings, onRe
                                                                         )}
                                                                     </td>
                                                                     <td className="px-5 py-2 text-center" onClick={(e) => e.stopPropagation()}>
-                                                                        <Tooltip content={
-                                                                            <div className="space-y-2 max-w-xs">
-                                                                                <div className="font-semibold text-white">Action Status: {take.status}</div>
-                                                                                <div className="text-xs text-gray-200">
-                                                                                    {ACTION_STATUS_GUIDANCE[take.status as keyof typeof ACTION_STATUS_GUIDANCE]?.description || 'Unknown status'}
-                                                                                </div>
-                                                                                <div className="text-[10px] text-gray-300 border-t border-gray-600 pt-1 mt-1">
-                                                                                    <div className="font-medium">When to use:</div>
-                                                                                    <div>{ACTION_STATUS_GUIDANCE[take.status as keyof typeof ACTION_STATUS_GUIDANCE]?.when || ''}</div>
-                                                                                </div>
-                                                                                <div className="text-[10px] text-gray-300">
-                                                                                    <div className="font-medium">Next step:</div>
-                                                                                    <div>{ACTION_STATUS_GUIDANCE[take.status as keyof typeof ACTION_STATUS_GUIDANCE]?.next || ''}</div>
-                                                                                </div>
-                                                                            </div>
-                                                                        }>
-                                                                            <select
-                                                                                value={take.status}
-                                                                                onChange={(e) => handleUpdateActionStatus(take.id, e.target.value)}
-                                                                                className="h-7 w-28 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 pr-7 text-xs text-gray-700 dark:text-gray-200 cursor-help text-left"
-                                                                            >
-                                                                                <option value="committed">Committed</option>
-                                                                                <option value="done">Done</option>
-                                                                                <option value="skipped">Skipped</option>
-                                                                            </select>
-                                                                        </Tooltip>
+                                                                        <select
+                                                                            value={take.status}
+                                                                            onChange={(e) => handleUpdateActionStatus(take.id, e.target.value)}
+                                                                            className="h-7 w-28 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 pr-7 text-xs text-gray-700 dark:text-gray-200 text-left"
+                                                                        >
+                                                                            <option value="committed">Committed</option>
+                                                                            <option value="done">Done</option>
+                                                                            <option value="skipped">Skipped</option>
+                                                                        </select>
                                                                     </td>
                                                                     <td className="px-5 py-2"></td>
                                                                     <td className="px-5 py-2"></td>
@@ -1517,32 +1473,15 @@ export default function BetsTable({ bets, beliefs, boldTakes, userSettings, onRe
                                                             )}
                                                         </td>
                                                         <td className="px-5 py-2 text-center" onClick={(e) => e.stopPropagation()}>
-                                                            <Tooltip content={
-                                                                <div className="space-y-2 max-w-xs">
-                                                                    <div className="font-semibold text-white">Action Status: {take.status}</div>
-                                                                    <div className="text-xs text-gray-200">
-                                                                        {ACTION_STATUS_GUIDANCE[take.status as keyof typeof ACTION_STATUS_GUIDANCE]?.description || 'Unknown status'}
-                                                                    </div>
-                                                                    <div className="text-[10px] text-gray-300 border-t border-gray-600 pt-1 mt-1">
-                                                                        <div className="font-medium">When to use:</div>
-                                                                        <div>{ACTION_STATUS_GUIDANCE[take.status as keyof typeof ACTION_STATUS_GUIDANCE]?.when || ''}</div>
-                                                                    </div>
-                                                                    <div className="text-[10px] text-gray-300">
-                                                                        <div className="font-medium">Next step:</div>
-                                                                        <div>{ACTION_STATUS_GUIDANCE[take.status as keyof typeof ACTION_STATUS_GUIDANCE]?.next || ''}</div>
-                                                                    </div>
-                                                                </div>
-                                                            }>
-                                                                <select
-                                                                    value={take.status}
-                                                                    onChange={(e) => handleUpdateActionStatus(take.id, e.target.value)}
-                                                                    className="h-7 w-28 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 pr-7 text-xs text-gray-700 dark:text-gray-200 cursor-help text-left"
-                                                                >
-                                                                    <option value="committed">Committed</option>
-                                                                    <option value="done">Done</option>
-                                                                    <option value="skipped">Skipped</option>
-                                                                </select>
-                                                            </Tooltip>
+                                                            <select
+                                                                value={take.status}
+                                                                onChange={(e) => handleUpdateActionStatus(take.id, e.target.value)}
+                                                                className="h-7 w-28 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 pr-7 text-xs text-gray-700 dark:text-gray-200 text-left"
+                                                            >
+                                                                <option value="committed">Committed</option>
+                                                                <option value="done">Done</option>
+                                                                <option value="skipped">Skipped</option>
+                                                            </select>
                                                         </td>
                                                         <td className="px-5 py-2"></td>
                                                         <td className="px-5 py-2"></td>

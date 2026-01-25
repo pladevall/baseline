@@ -54,7 +54,6 @@ function CalendarPageContent({ }: CalendarPageContentProps) {
                     </p>
                 </div>
                 <div className="flex items-center gap-2">
-
                     <InboxPopover />
                     <button
                         onClick={toggleWideMode}
@@ -67,6 +66,7 @@ function CalendarPageContent({ }: CalendarPageContentProps) {
                         {isWideMode ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
                     </button>
                     <ThemeToggle />
+                    <span className="h-5 w-px bg-gray-200 dark:bg-gray-700/60" aria-hidden="true" />
                     <Link
                         href="/practice"
                         title="Practice (Cmd+Shift+P)"

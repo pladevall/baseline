@@ -574,6 +574,7 @@ export default function Home() {
           </div>
           <div className="flex items-center gap-2">
             <ThemeToggle />
+            <span className="h-5 w-px bg-gray-200 dark:bg-gray-700/60" aria-hidden="true" />
             <Link
               href="/practice"
               title="Practice (Cmd+Shift+P)"

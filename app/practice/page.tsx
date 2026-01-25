@@ -146,6 +146,8 @@ export default function PracticePage() {
                         </div>
                     </div>
                     <div className="flex items-center gap-2">
+                        <ThemeToggle />
+                        <span className="h-5 w-px bg-gray-200 dark:bg-gray-700/60" aria-hidden="true" />
                         <Link
                             href="/"
                             title="Baseline (Option+1)"
@@ -168,8 +170,6 @@ export default function PracticePage() {
                                 <line x1="3" x2="21" y1="10" y2="10" />
                             </svg>
                         </Link>
-                        <span className="h-5 w-px bg-gray-200 dark:bg-gray-700/60" aria-hidden="true" />
-                        <ThemeToggle />
                     </div>
                 </header>
 

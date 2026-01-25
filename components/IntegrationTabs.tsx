@@ -307,7 +307,7 @@ function BodyspecContent({
                                         </span>
                                     </div>
                                     <span className={isHidden ? 'text-gray-400 dark:text-gray-500' : 'text-gray-600 dark:text-gray-400'}>
-                                        {scan.data.bodyFatPercentage.toFixed(1)}% • {scan.data.weight.toFixed(0)} lb
+                                        {(Math.floor(scan.data.bodyFatPercentage * 10) / 10).toFixed(1)}% • {scan.data.weight.toFixed(0)} lb
                                     </span>
                                 </div>
                             );
