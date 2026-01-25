@@ -127,6 +127,8 @@ interface BetsTableProps {
     isCompleted?: boolean;
 }
 
+type ScoredBet = Bet & { bet_score: number };
+
 export default function BetsTable({ bets, beliefs, boldTakes, userSettings, onRefresh, onOpenPracticeModal, isCompleted }: BetsTableProps) {
     const [expandedBets, setExpandedBets] = useState<Set<string>>(() =>
         new Set(bets.map(b => b.id))
@@ -171,8 +173,11 @@ export default function BetsTable({ bets, beliefs, boldTakes, userSettings, onRe
     }, [userSettings?.annual_salary]);
 
     // Compute scores and sort
-    const sortedBets = useMemo(() => {
-        return [...bets].map(bet => ({ ...bet, bet_score: bet.bet_score ?? calculateBetScore(bet) }));
+    const sortedBets = useMemo<ScoredBet[]>(() => {
+        return [...bets].map((bet) => {
+            const betScore = bet.bet_score ?? calculateBetScore(bet) ?? 0;
+            return { ...bet, bet_score: betScore };
+        });
     }, [bets]);
 
     useEffect(() => {
@@ -307,7 +312,7 @@ export default function BetsTable({ bets, beliefs, boldTakes, userSettings, onRe
         const betMap = new Map(sortedBets.map((bet) => [bet.id, bet]));
         return betOrder
             .map((id) => betMap.get(id))
-            .filter((bet): bet is Bet => Boolean(bet));
+            .filter((bet): bet is ScoredBet => Boolean(bet));
     }, [betOrder, sortedBets]);
 
     const getOrderedActions = useCallback((actions: BoldTake[], groupKey: string) => {
