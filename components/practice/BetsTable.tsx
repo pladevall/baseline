@@ -248,45 +248,6 @@ export default function BetsTable({ bets, beliefs, boldTakes, userSettings, onRe
         });
     }, [boldTakes, sortedBets]);
 
-    useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => {
-            const target = e.target as HTMLElement | null;
-            const tag = target?.tagName?.toLowerCase();
-            const isEditable = target?.isContentEditable || tag === 'input' || tag === 'textarea' || tag === 'select';
-            if (isEditable) return;
-
-            if (quickAddOpen && e.key === 'Escape') {
-                e.preventDefault();
-                setQuickAddOpen(false);
-                return;
-            }
-
-            if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') {
-                e.preventDefault();
-                if (e.shiftKey) {
-                    handleRedo();
-                } else {
-                    handleUndo();
-                }
-                return;
-            }
-
-            if (e.key === 'a' || e.key === 'A') {
-                e.preventDefault();
-                setQuickAddMode('action');
-                setQuickAddOpen(true);
-            }
-
-            if (e.key === 'b' || e.key === 'B') {
-                e.preventDefault();
-                setQuickAddMode('belief');
-                setQuickAddOpen(true);
-            }
-        };
-
-        document.addEventListener('keydown', handleKeyDown);
-        return () => document.removeEventListener('keydown', handleKeyDown);
-    }, [handleUndo, handleRedo, quickAddOpen]);
 
     const toggleBet = (betId: string) => {
         const newExpanded = new Set(expandedBets);
@@ -502,6 +463,46 @@ export default function BetsTable({ bets, beliefs, boldTakes, userSettings, onRe
         await handleUpdateActionStatus(latest.id, latest.to, false);
         isRestoringRef.current = false;
     }, [redoStack, handleUpdateActionStatus]);
+
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            const target = e.target as HTMLElement | null;
+            const tag = target?.tagName?.toLowerCase();
+            const isEditable = target?.isContentEditable || tag === 'input' || tag === 'textarea' || tag === 'select';
+            if (isEditable) return;
+
+            if (quickAddOpen && e.key === 'Escape') {
+                e.preventDefault();
+                setQuickAddOpen(false);
+                return;
+            }
+
+            if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') {
+                e.preventDefault();
+                if (e.shiftKey) {
+                    handleRedo();
+                } else {
+                    handleUndo();
+                }
+                return;
+            }
+
+            if (e.key === 'a' || e.key === 'A') {
+                e.preventDefault();
+                setQuickAddMode('action');
+                setQuickAddOpen(true);
+            }
+
+            if (e.key === 'b' || e.key === 'B') {
+                e.preventDefault();
+                setQuickAddMode('belief');
+                setQuickAddOpen(true);
+            }
+        };
+
+        document.addEventListener('keydown', handleKeyDown);
+        return () => document.removeEventListener('keydown', handleKeyDown);
+    }, [handleUndo, handleRedo, quickAddOpen]);
 
     const handleQuickAddAction = useCallback(async () => {
         if (!quickAddText.trim()) return;
